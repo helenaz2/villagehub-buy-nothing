@@ -37,6 +37,7 @@ function AccountForm({ mode }: { mode: 'signup' | 'login' }) {
     // a real session after it succeeds; passwords must never be stored locally.
     setPassword(''); setConfirm(''); setEmail('');
     startDemoSession(signup ? { name: name.trim(), street: street.trim(), city: city.trim(), state } : undefined);
+    router.replace('/explore');
   }
   function field(label: string, value: string, change: (text: string) => void, placeholder: string) {
     return <View style={s.field}><Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} style={s.input} value={value} onChangeText={change} placeholder={placeholder} placeholderTextColor={palette.muted} /></View>;
