@@ -4,8 +4,8 @@ export function suggestReplies(item: Item, hostName: string): string[] {
   const first = hostName.split(' ')[0] ?? hostName;
   const thing = item.title.toLowerCase();
   return [
-    `Hi ${first}! I love the ${thing}. Is it still available? I can pick it up today.`,
-    `Hi ${first}! I'm around after 5 pm. Would that work for you?`,
+    `Hi ${first}! I love the ${thing}. Is it still available. I can pick it up today.`,
+    `Hi ${first}! I'm around after 5 pm. Would that work for you.`,
     `Hi ${first}! Porch pickup in ${item.neighborhood} works on my side if that's easier.`,
   ];
 }

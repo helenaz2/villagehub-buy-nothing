@@ -13,6 +13,7 @@ export type IconName =
   | 'spark'
   | 'close'
   | 'pin'
+  | 'pushpin'
   | 'star'
   | 'camera'
   | 'check';
@@ -29,6 +30,8 @@ export function Icon({ name, size = 22, color = '#1E3A2F', strokeWidth = 1.8 }: 
   const stroke = { stroke: color, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   switch (name) {
+    case 'pushpin':
+      return <Svg {...common}><Path d="M9 3h6l-1 6 4 4v2H6v-2l4-4-1-6ZM12 15v6" {...stroke} /></Svg>;
     case 'search':
       return (
         <Svg {...common}>

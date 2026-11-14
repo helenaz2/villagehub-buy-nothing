@@ -20,9 +20,9 @@ export function ProductGallery({ photos, title }: { photos: string[]; title: str
       <View pointerEvents="none" style={s.counter}><Text style={s.counterText}>{active + 1} / {photos.length}</Text></View>
     </View>
     {photos.length > 1 ? <View style={s.controls}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Previous photo" disabled={active === 0} onPress={() => go(active - 1)} style={[s.arrow, active === 0 && s.disabled]}><Text style={s.arrowText}>?</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Previous photo" disabled={active === 0} onPress={() => go(active - 1)} style={[s.arrow, active === 0 && s.disabled]}><Text style={s.arrowText}>{'\u203a'}</Text></Pressable>
       <View style={s.dots}>{photos.map((_,i) => <Pressable key={i} accessibilityRole="button" accessibilityLabel={'Show photo ' + (i + 1)} accessibilityState={{ selected: active === i }} onPress={() => go(i)} style={s.dotTarget}><View style={[s.dot, active === i && s.selected]} /></Pressable>)}</View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Next photo" disabled={active === photos.length - 1} onPress={() => go(active + 1)} style={[s.arrow, active === photos.length - 1 && s.disabled]}><Text style={s.arrowText}>?</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Next photo" disabled={active === photos.length - 1} onPress={() => go(active + 1)} style={[s.arrow, active === photos.length - 1 && s.disabled]}><Text style={s.arrowText}>{'\u203a'}</Text></Pressable>
     </View> : null}
   </View>;
 }

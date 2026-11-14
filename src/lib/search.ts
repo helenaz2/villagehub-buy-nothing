@@ -29,6 +29,7 @@ const STOP = new Set([
 const CATEGORY_HINTS: Record<Item['category'], string[]> = {
   Furniture: ['chair', 'sofa', 'couch', 'table', 'desk', 'lamp', 'shelf', 'stool', 'furniture', 'nook', 'reading', 'seat', 'armchair'],
   Clothing: ['shirt', 'tote', 'bag', 'jacket', 'clothes', 'clothing', 'dress', 'shoes', 'cardigan', 'wear', 'sweater', 'wool'],
+  Other: ['other'],
   Home: ['plant', 'ceramic', 'mug', 'cup', 'vase', 'home', 'kitchen', 'pot', 'jar', 'linen', 'blanket', 'green'],
 };
 

@@ -1,9 +1,10 @@
-export const CATEGORIES = ['Furniture', 'Clothing', 'Home'] as const;
+export const CATEGORIES = ['Furniture', 'Clothing', 'Home', 'Other'] as const;
 export const CONDITIONS = ['Like new', 'Good condition', 'Fair', 'Well loved'] as const;
 export const COLORS = ['Natural', 'Sage', 'Cream', 'Black', 'White', 'Terracotta', 'Oak'] as const;
 export const SIZES = ['One size', 'Small', 'Medium', 'Large'] as const;
 
-export type Category = (typeof CATEGORIES)[number];
+// Categories can also be supplied by the shared backend catalog.
+export type Category = string;
 export type Condition = (typeof CONDITIONS)[number];
 
 export type Item = {
@@ -47,6 +48,7 @@ export type ChatMessage = {
   sender: 'me' | 'them';
   text: string;
   time: string;
+  sentAt?: number;
 };
 
 export type Conversation = {
@@ -56,6 +58,10 @@ export type Conversation = {
   unread: boolean;
   pinned?: boolean;
   participantId?: string;
+  ratings?: Record<string, number>;
+  // Backend integration: earliest rating invitation time after confirmed conversation end.
+  ratingAvailableAt?: number;
+  ratingDismissedBy?: string[];
 };
 
 export type Draft = {

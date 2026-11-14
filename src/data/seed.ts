@@ -204,13 +204,13 @@ export const initialConversations: Conversation[] = [
       {
         id: 'm1',
         sender: 'me',
-        text: 'Hi Maya! I love the chair. Is it still available? I can pick it up today.',
+        text: 'Hi Maya! I love the chair. Is it still available. I can pick it up today.',
         time: '9:02 AM',
       },
       {
         id: 'm2',
         sender: 'them',
-        text: "Hi Alex! Yes, it's still available. I'm around after 5 pm. Would that work for you?",
+        text: "Hi Alex! Yes, it's still available. I'm around after 5 pm. Would that work for you.",
         time: '9:06 AM',
       },
     ],

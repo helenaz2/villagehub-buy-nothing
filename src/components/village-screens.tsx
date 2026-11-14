@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { BackButton } from './back-button';
+import { HostRating } from './host-rating';
+import { ChatRating } from './chat-rating';
 import { ProductGallery } from './product-gallery';
 import { Icon } from './icon';
 import { Screen } from './screen';
@@ -12,23 +15,24 @@ import { useStore } from '@/data/store';
 import { searchItems } from '@/lib/search';
 import { InboxRow } from './inbox-row';
 import { PostEditor } from './post-editor';
-import { CATEGORIES, type Item } from '@/types/listing';
+import { ProposeCategory } from './propose-category';
+import { type Item } from '@/types/listing';
 
 function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
 return <View style={s.heading}><Text style={s.title}>{title}</Text>{subtitle ? <Text style={s.muted}>{subtitle}</Text> : null}</View>;
 }
-function Back() { return <Button label="Back" variant="ghost" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} />; }
+function Back() { return <BackButton />; }
 function Grid({ items }: { items: Item[] }) {
 const { savedIds, toggleSave } = useStore();
 return items.length ? <ItemGrid items={items} savedIds={savedIds} onSave={toggleSave} onPress={(id) => router.push({ pathname: '/item', params: { id } })} /> : <Text style={s.muted}>No items here yet. Try another search or save something you love.</Text>;
 }
 export function ExploreScreen() {
-const { items, me } = useStore();
+const { items, me, categories } = useStore();
 const [query, setQuery] = useState('');
 const [category, setCategory] = useState('For you');
 return <Screen tabBar><Heading title="VillageHub" subtitle={me.neighborhood + ', ' + me.city} /><Text style={s.title}>Good things, shared.</Text><Text style={s.muted}>Find something you need. Give something a new home.</Text>
 <TextInput accessibilityLabel="Search items" placeholder="Search for something lovely" placeholderTextColor={palette.muted} value={query} onChangeText={setQuery} style={s.input} />
-<View style={s.chips}>{['For you', ...CATEGORIES].map((c) => <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />)}</View>
+<View style={s.chips}>{['For you', ...categories].map((c) => <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />)}</View><ProposeCategory onApproved={setCategory} />
 <Heading title="Free in your neighborhood" /><Grid items={searchItems(items, query, category, 'All', 'Any', 'Any')} /></Screen>;
 }
 export function SavedScreen() {
@@ -42,11 +46,11 @@ return <Screen tabBar><Heading title="Inbox" subtitle="Swipe left for conversati
 }
 export function ProfileScreen() {
 const { me, items } = useStore();
-return <Screen tabBar><Heading title={me.name} subtitle={me.handle} /><Image source={{ uri: me.avatar }} style={s.avatar} /><Text style={s.label}>{me.neighborhood}, {me.city}</Text><Text style={s.muted}>{me.bio}</Text><Text style={s.muted}>Member since {me.memberSince}</Text><Heading title="Your listings" /><Grid items={items.filter((i) => i.hostId === me.id)} /><Text style={s.note}>Demo data resets when the app restarts.</Text></Screen>;
+return <Screen tabBar><Heading title={'Hi, ' + me.name} subtitle={me.handle} /><Image source={{ uri: me.avatar }} style={s.avatar} /><Text style={s.label}>{me.neighborhood}, {me.city}</Text><Text style={s.muted}>{me.bio}</Text><Text style={s.muted}>Member since {me.memberSince}</Text><Heading title="Your listings" /><Grid items={items.filter((i) => i.hostId === me.id)} /><Text style={s.note}>Demo data resets when the app restarts.</Text></Screen>;
 }
 export function DetailScreen() {
 const { id } = useLocalSearchParams<{ id: string }>();
-const { items, person, savedIds, toggleSave, openThread, me, claim, relist } = useStore();
+const { items, person, savedIds, toggleSave, openThread, me, claim, relist, ratingFor } = useStore();
 const item = items.find(i => i.id === id);
 if (!item) return <Screen><Back /><Heading title="Item unavailable" /></Screen>;
 const host = person(item.hostId);
@@ -61,19 +65,21 @@ return <Screen><Back /><ProductGallery key={item.id} photos={item.photos} title=
 <View style={d.panel}><Text style={d.section}>Condition & details</Text><View style={d.condition}><Icon name="check" size={16} /><Text style={d.conditionText}>{item.condition}</Text></View>{item.conditionNote ? <Text style={d.body}>{item.conditionNote}</Text> : null}
 <View style={d.specs}><View style={d.spec}><Text style={d.muted}>Size</Text><Text style={d.value}>{item.size || 'Not specified'}</Text></View><View style={d.spec}><Text style={d.muted}>Color</Text><Text style={d.value}>{item.color || 'Not specified'}</Text></View>{item.materials ? <View style={d.spec}><Text style={d.muted}>Materials</Text><Text style={d.value}>{item.materials}</Text></View> : null}{item.fabric ? <View style={d.spec}><Text style={d.muted}>Fabric</Text><Text style={d.value}>{item.fabric}</Text></View> : null}</View></View>
 <View style={d.panel}><Text style={d.section}>About this item</Text><Text style={d.body}>{item.description}</Text>{item.features.length ? <View style={d.features}>{item.features.map(feature => <View key={feature} style={d.feature}><Icon name="check" size={14} /><Text style={d.body}>{feature}</Text></View>)}</View> : null}</View>
-<View style={d.panel}><Text style={d.section}>Meet your neighbor</Text><View style={d.hostRow}>{host ? <><Image source={{ uri: host.avatar }} style={d.avatar} /><View style={d.hostInfo}><Text style={d.hostName}>{host.name}</Text><Text style={d.muted}>{host.handle}</Text><Text style={d.muted}>Member since {host.memberSince}</Text></View></> : <Text style={d.hostName}>Neighbor</Text>}</View><Text style={d.posted}>Posted {item.postedLabel.toLowerCase()}</Text></View>
+<View style={d.panel}><Text style={d.section}>Meet your neighbor</Text><Pressable accessibilityRole="button" accessibilityLabel={'View profile of ' + (host?.name ?? 'neighbor')} disabled={!host} onPress={() => host && router.push({ pathname: '/neighbor', params: { id: host.id } })} style={d.hostRow}>{host ? <><Image source={{ uri: host.avatar }} style={d.avatar} /><View style={d.hostInfo}><Text style={d.hostName}>{host.name}</Text><Text style={d.muted}>{host.handle}</Text><HostRating value={ratingFor(host.id)} /><Text style={d.muted}>Member since {host.memberSince}</Text></View></> : <Text style={d.hostName}>Neighbor</Text>}</Pressable><Text style={d.posted}>Posted {item.postedLabel.toLowerCase()}</Text></View>
 <View style={d.actionPanel}><Text style={d.section}>{own ? 'Manage your post' : 'Give it a new chapter'}</Text><Text style={d.muted}>{own ? 'Keep your neighbors up to date.' : 'Arrange pickup directly with the host.'}</Text><Button label={savedIds.includes(id) ? 'Unsave item' : 'Save item'} variant="ghost" onPress={() => toggleSave(id)} />{own ? <><Button label="Edit post" onPress={() => router.push({ pathname: '/post', params: { id } })} /><Button label={item.status === 'claimed' ? 'Relist item' : 'Mark as claimed'} variant="ghost" onPress={() => item.status === 'claimed' ? relist(id) : claim(id)} /></> : <Button label={item.status === 'claimed' ? 'Already claimed' : 'Message host'} disabled={item.status === 'claimed'} onPress={() => router.push({ pathname: '/chat', params: { id: openThread(id) } })} />}</View></Screen>;
 
 }
 export function ChatScreen() {
 const { id } = useLocalSearchParams<{ id: string }>();
-const { conversations, items, sendMessage, markRead } = useStore();
+const { conversations, items, sendMessage, markRead, person, ratingFor } = useStore();
 const [text, setText] = useState('');
 const conversation = conversations.find((c) => c.id === id);
+const chatItem = items.find(i => i.id === conversation?.itemId);
+const neighbor = person(conversation?.participantId ?? chatItem?.hostId ?? '');
 const unread = conversation?.unread;
 const pathname = usePathname();
 useEffect(() => { if (pathname === '/chat' && unread) markRead(id); }, [pathname, id, unread, markRead]);
-return <Screen keyboard><Back /><Heading title={items.find((i) => i.id === conversation?.itemId)?.title ?? 'Conversation'} subtitle="Demo conversation ? replies are simulated" />{conversation?.messages.map((m) => <View key={m.id} style={[s.card, m.sender === 'me' && s.mine]}><Text style={s.body}>{m.text}</Text><Text style={s.note}>{m.time}</Text></View>)}{conversation ? <><TextInput accessibilityLabel="Message" placeholder="Write a friendly message" placeholderTextColor={palette.muted} value={text} onChangeText={setText} style={s.input} multiline /><Button label="Send message" disabled={!text.trim()} onPress={() => { sendMessage(id, text); setText(''); }} /></> : <Text style={s.muted}>Conversation unavailable.</Text>}</Screen>;
+return <Screen keyboard><Back />{neighbor ? <Pressable accessibilityRole="button" accessibilityLabel={'View profile of ' + neighbor.name} onPress={() => router.push({ pathname: '/neighbor', params: { id: neighbor.id } })} style={[s.card, d.hostRow]}><Image source={{ uri: neighbor.avatar }} style={d.avatar} /><View><Text style={d.hostName}>{neighbor.name}</Text><Text style={d.muted}>{neighbor.handle}</Text><HostRating value={ratingFor(neighbor.id)} /></View></Pressable> : null}<Heading title={items.find((i) => i.id === conversation?.itemId)?.title ?? 'Conversation'} subtitle="Demo conversation - replies are simulated" />{conversation?.messages.map((m) => <View key={m.id} style={[s.card, m.sender === 'me' && s.mine]}><Text style={s.body}>{m.text}</Text><Text style={s.note}>{m.time}</Text></View>)}{conversation ? <><ChatRating key={id} conversation={conversation} /><TextInput accessibilityLabel="Message" placeholder="Write a friendly message" placeholderTextColor={palette.muted} value={text} onChangeText={setText} style={s.input} multiline /><Button label="Send message" disabled={!text.trim()} onPress={() => { sendMessage(id, text); setText(''); }} /></> : <Text style={s.muted}>Conversation unavailable.</Text>}</Screen>;
 }
 export function PostScreen() {
 const { id } = useLocalSearchParams<{ id?: string }>();

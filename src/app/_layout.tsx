@@ -8,6 +8,7 @@ export default function Layout() {
       <Stack.Screen name="item" />
       <Stack.Screen name="post" />
       <Stack.Screen name="chat" />
+      <Stack.Screen name="neighbor" />
     </Stack>
   </StoreProvider></GestureHandlerRootView>;
 }

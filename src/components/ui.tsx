@@ -8,18 +8,20 @@ export function Chip({
   selected = false,
   onPress,
   tone = 'default',
+  compact = false,
 }: {
   label: string;
   selected?: boolean;
   onPress?: () => void;
   tone?: 'default' | 'quiet';
+  compact?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={[styles.chip, tone === 'quiet' && styles.quiet, selected && styles.selected]}>
-      <Text style={[styles.chipLabel, selected && styles.selectedLabel]}>{label}</Text>
+      style={[styles.chip, compact && styles.compactChip, tone === 'quiet' && styles.quiet, selected && styles.selected]}>
+      <Text style={[styles.chipLabel, compact && styles.compactLabel, selected && styles.selectedLabel]}>{label}</Text>
     </Pressable>
   );
 }
@@ -80,6 +82,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.line,
   },
+  compactChip: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 6 },
+  compactLabel: { fontSize: 12 },
   quiet: {
     backgroundColor: palette.forestSoft,
     borderColor: 'transparent',
