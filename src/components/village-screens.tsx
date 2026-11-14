@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { VillageLogo } from './village-logo';
 import { BackButton } from './back-button';
 import { HostRating } from './host-rating';
 import { ChatRating } from './chat-rating';
@@ -27,10 +28,10 @@ const { savedIds, toggleSave } = useStore();
 return items.length ? <ItemGrid items={items} savedIds={savedIds} onSave={toggleSave} onPress={(id) => router.push({ pathname: '/item', params: { id } })} /> : <Text style={s.muted}>No items here yet. Try another search or save something you love.</Text>;
 }
 export function ExploreScreen() {
-const { items, me, categories } = useStore();
+const { items, categories } = useStore();
 const [query, setQuery] = useState('');
 const [category, setCategory] = useState('For you');
-return <Screen tabBar><Heading title="VillageHub" subtitle={me.neighborhood + ', ' + me.city} /><Text style={s.title}>Good things, shared.</Text><Text style={s.muted}>Find something you need. Give something a new home.</Text>
+return <Screen tabBar><View style={s.exploreBrand}><View style={s.exploreLogo}><VillageLogo /></View><View style={s.exploreBrandText}><Text style={s.exploreName}>VillageHub</Text><Text style={s.exploreSubtitle}>Buy Nothing</Text></View></View><Text style={s.title}>Good things, shared.</Text><Text style={s.muted}>Find something you need. Give something a new home.</Text>
 <TextInput accessibilityLabel="Search items" placeholder="Search for something lovely" placeholderTextColor={palette.muted} value={query} onChangeText={setQuery} style={s.input} />
 <View style={s.chips}>{['For you', ...categories].map((c) => <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />)}</View><ProposeCategory onApproved={setCategory} />
 <Heading title="Free in your neighborhood" /><Grid items={searchItems(items, query, category, 'All', 'Any', 'Any')} /></Screen>;
@@ -86,6 +87,11 @@ const { id } = useLocalSearchParams<{ id?: string }>();
 return <PostEditor key={id ?? 'new'} itemId={id} />;
 }
 const s = StyleSheet.create({
+exploreBrand: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10, marginBottom: 24 },
+exploreLogo: { width: 58, height: 58 },
+exploreBrandText: { flex: 1 },
+exploreName: { fontFamily: serif, fontSize: 27, color: palette.forest },
+exploreSubtitle: { fontSize: 13, letterSpacing: 1.3, color: palette.forest, marginTop: 2 },
 heading: { gap: 6, marginTop: 18, marginBottom: 18 },
 title: { fontFamily: serif, fontSize: 28, color: palette.forest },
 muted: { fontSize: 14, color: palette.muted, lineHeight: 21 },
