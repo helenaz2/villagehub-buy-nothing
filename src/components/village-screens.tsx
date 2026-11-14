@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { ProductGallery } from './product-gallery';
+import { Icon } from './icon';
 import { Screen } from './screen';
 import { ItemGrid } from './item-card';
 import { Button, Chip } from './ui';
 import { palette, serif } from '@/constants/palette';
 import { useStore } from '@/data/store';
 import { searchItems } from '@/lib/search';
+import { InboxRow } from './inbox-row';
+import { PostEditor } from './post-editor';
 import { CATEGORIES, type Item } from '@/types/listing';
 
 function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
 return <View style={s.heading}><Text style={s.title}>{title}</Text>{subtitle ? <Text style={s.muted}>{subtitle}</Text> : null}</View>;
 }
-function Back() { return <Button label="Explore" variant="ghost" onPress={() => router.navigate('/')} />; }
+function Back() { return <Button label="Back" variant="ghost" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} />; }
 function Grid({ items }: { items: Item[] }) {
 const { savedIds, toggleSave } = useStore();
 return items.length ? <ItemGrid items={items} savedIds={savedIds} onSave={toggleSave} onPress={(id) => router.push({ pathname: '/item', params: { id } })} /> : <Text style={s.muted}>No items here yet. Try another search or save something you love.</Text>;
@@ -32,11 +36,9 @@ const { items, savedIds } = useStore();
 return <Screen tabBar><Heading title="Saved" subtitle="Good finds to come back to." /><Grid items={items.filter((i) => savedIds.includes(i.id))} /></Screen>;
 }
 export function InboxScreen() {
-const { conversations, items, person } = useStore();
-return <Screen tabBar><Heading title="Inbox" subtitle="A little conversation goes a long way." />{conversations.map((c) => {
-const item = items.find((i) => i.id === c.itemId);
-return <Pressable accessibilityRole="button" key={c.id} style={s.card} onPress={() => router.push({ pathname: '/chat', params: { id: c.id } })}><Text style={s.label}>{person(item?.hostId ?? '')?.name ?? 'Neighbor'}{c.unread ? ' ? New' : ''}</Text><Text style={s.label}>{item?.title ?? 'Listing removed'}</Text><Text numberOfLines={2} style={s.muted}>{c.messages.at(-1)?.text ?? 'Start a conversation'}</Text></Pressable>;
-})}</Screen>;
+const { conversations } = useStore();
+const sorted = [...conversations].sort((a,b) => Number(!!b.pinned) - Number(!!a.pinned));
+return <Screen tabBar><Heading title="Inbox" subtitle="Swipe left for conversation options." />{sorted.length ? sorted.map(c => <InboxRow key={c.id} conversation={c} />) : <Text style={s.muted}>No conversations yet. Message a host to get started.</Text>}</Screen>;
 }
 export function ProfileScreen() {
 const { me, items } = useStore();
@@ -45,9 +47,23 @@ return <Screen tabBar><Heading title={me.name} subtitle={me.handle} /><Image sou
 export function DetailScreen() {
 const { id } = useLocalSearchParams<{ id: string }>();
 const { items, person, savedIds, toggleSave, openThread, me, claim, relist } = useStore();
-const item = items.find((i) => i.id === id);
-if (!item) return <Screen tabBar><Back /><Heading title="Item unavailable" /></Screen>;
-return <Screen tabBar><Back /><Image source={{ uri: item.photos[0] }} style={s.photo} contentFit="cover" /><Heading title={item.title} subtitle={'Free ? ' + item.condition + ' ? ' + item.status} /><Text style={s.label}>{item.neighborhood} ? {item.distance}</Text><Text style={s.body}>{item.description}</Text><Text style={s.muted}>{item.conditionNote}</Text><Text style={s.body}>{item.size} ? {item.color}</Text><Text style={s.muted}>Shared by {person(item.hostId)?.name ?? 'a neighbor'}</Text><View style={s.actions}><Button label={savedIds.includes(id) ? 'Unsave item' : 'Save item'} variant="ghost" onPress={() => toggleSave(id)} />{item.hostId === me.id ? <Button label={item.status === 'claimed' ? 'Relist item' : 'Mark claimed'} onPress={() => item.status === 'claimed' ? relist(id) : claim(id)} /> : <Button label="Message neighbor" disabled={item.status === 'claimed'} onPress={() => router.push({ pathname: '/chat', params: { id: openThread(id) } })} />}</View></Screen>;
+const item = items.find(i => i.id === id);
+if (!item) return <Screen><Back /><Heading title="Item unavailable" /></Screen>;
+const host = person(item.hostId);
+const own = item.hostId === me.id;
+return <Screen><Back /><ProductGallery key={item.id} photos={item.photos} title={item.title} />
+<View style={d.summary}>
+<View style={d.topline}><Text style={d.eyebrow}>{item.category}</Text><View style={[d.status, item.status === 'claimed' && d.claimed]}><Text style={d.statusText}>{item.status === 'available' ? 'Available' : 'Claimed'}</Text></View></View>
+<Text style={d.title}>{item.title}</Text><View style={d.priceRow}><Text style={d.price}>Free</Text><Text style={d.muted}>A new home, at no cost</Text></View>
+<View style={d.location}><Icon name="pin" size={16} /><Text style={d.locationText}>{item.neighborhood}, {item.city}</Text></View>
+<View style={d.tags}>{[item.category,...item.tags].filter((tag,i,all) => all.indexOf(tag) === i).map(tag => <View key={tag} style={d.tag}><Text style={d.tagText}>#{tag.replace(/^#+/, '').replace(/\s+/g, '')}</Text></View>)}</View>
+</View>
+<View style={d.panel}><Text style={d.section}>Condition & details</Text><View style={d.condition}><Icon name="check" size={16} /><Text style={d.conditionText}>{item.condition}</Text></View>{item.conditionNote ? <Text style={d.body}>{item.conditionNote}</Text> : null}
+<View style={d.specs}><View style={d.spec}><Text style={d.muted}>Size</Text><Text style={d.value}>{item.size || 'Not specified'}</Text></View><View style={d.spec}><Text style={d.muted}>Color</Text><Text style={d.value}>{item.color || 'Not specified'}</Text></View>{item.materials ? <View style={d.spec}><Text style={d.muted}>Materials</Text><Text style={d.value}>{item.materials}</Text></View> : null}{item.fabric ? <View style={d.spec}><Text style={d.muted}>Fabric</Text><Text style={d.value}>{item.fabric}</Text></View> : null}</View></View>
+<View style={d.panel}><Text style={d.section}>About this item</Text><Text style={d.body}>{item.description}</Text>{item.features.length ? <View style={d.features}>{item.features.map(feature => <View key={feature} style={d.feature}><Icon name="check" size={14} /><Text style={d.body}>{feature}</Text></View>)}</View> : null}</View>
+<View style={d.panel}><Text style={d.section}>Meet your neighbor</Text><View style={d.hostRow}>{host ? <><Image source={{ uri: host.avatar }} style={d.avatar} /><View style={d.hostInfo}><Text style={d.hostName}>{host.name}</Text><Text style={d.muted}>{host.handle}</Text><Text style={d.muted}>Member since {host.memberSince}</Text></View></> : <Text style={d.hostName}>Neighbor</Text>}</View><Text style={d.posted}>Posted {item.postedLabel.toLowerCase()}</Text></View>
+<View style={d.actionPanel}><Text style={d.section}>{own ? 'Manage your post' : 'Give it a new chapter'}</Text><Text style={d.muted}>{own ? 'Keep your neighbors up to date.' : 'Arrange pickup directly with the host.'}</Text><Button label={savedIds.includes(id) ? 'Unsave item' : 'Save item'} variant="ghost" onPress={() => toggleSave(id)} />{own ? <><Button label="Edit post" onPress={() => router.push({ pathname: '/post', params: { id } })} /><Button label={item.status === 'claimed' ? 'Relist item' : 'Mark as claimed'} variant="ghost" onPress={() => item.status === 'claimed' ? relist(id) : claim(id)} /></> : <Button label={item.status === 'claimed' ? 'Already claimed' : 'Message host'} disabled={item.status === 'claimed'} onPress={() => router.push({ pathname: '/chat', params: { id: openThread(id) } })} />}</View></Screen>;
+
 }
 export function ChatScreen() {
 const { id } = useLocalSearchParams<{ id: string }>();
@@ -55,22 +71,13 @@ const { conversations, items, sendMessage, markRead } = useStore();
 const [text, setText] = useState('');
 const conversation = conversations.find((c) => c.id === id);
 const unread = conversation?.unread;
-useEffect(() => { if (unread) markRead(id); }, [id, unread, markRead]);
-return <Screen tabBar keyboard><Back /><Heading title={items.find((i) => i.id === conversation?.itemId)?.title ?? 'Conversation'} subtitle="Demo conversation ? replies are simulated" />{conversation?.messages.map((m) => <View key={m.id} style={[s.card, m.sender === 'me' && s.mine]}><Text style={s.body}>{m.text}</Text><Text style={s.note}>{m.time}</Text></View>)}{conversation ? <><TextInput accessibilityLabel="Message" placeholder="Write a friendly message" placeholderTextColor={palette.muted} value={text} onChangeText={setText} style={s.input} multiline /><Button label="Send message" disabled={!text.trim()} onPress={() => { sendMessage(id, text); setText(''); }} /></> : <Text style={s.muted}>Conversation unavailable.</Text>}</Screen>;
+const pathname = usePathname();
+useEffect(() => { if (pathname === '/chat' && unread) markRead(id); }, [pathname, id, unread, markRead]);
+return <Screen keyboard><Back /><Heading title={items.find((i) => i.id === conversation?.itemId)?.title ?? 'Conversation'} subtitle="Demo conversation ? replies are simulated" />{conversation?.messages.map((m) => <View key={m.id} style={[s.card, m.sender === 'me' && s.mine]}><Text style={s.body}>{m.text}</Text><Text style={s.note}>{m.time}</Text></View>)}{conversation ? <><TextInput accessibilityLabel="Message" placeholder="Write a friendly message" placeholderTextColor={palette.muted} value={text} onChangeText={setText} style={s.input} multiline /><Button label="Send message" disabled={!text.trim()} onPress={() => { sendMessage(id, text); setText(''); }} /></> : <Text style={s.muted}>Conversation unavailable.</Text>}</Screen>;
 }
 export function PostScreen() {
-const { me, publish } = useStore();
-const [title, setTitle] = useState('');
-const [description, setDescription] = useState('');
-const [photo, setPhoto] = useState('');
-const [category, setCategory] = useState<Item['category']>('Home');
-function post() {
-const id = 'item_' + Date.now();
-publish({ id, title: title.trim(), description: description.trim(), photos: [photo.trim()], category, condition: 'Good condition', conditionNote: '', size: 'One size', color: 'Natural', tags: [], features: [], materials: '', fabric: '', neighborhood: me.neighborhood, city: me.city, distance: 'Nearby', hostId: me.id, status: 'available', postedLabel: 'Just now', saves: 0 });
-setTitle(''); setDescription(''); setPhoto('');
-router.replace({ pathname: '/item', params: { id } });
-}
-return <Screen tabBar keyboard><Back /><Heading title="Give something a new home" subtitle="Everything on VillageHub is free." /><Text style={s.label}>Title</Text><TextInput accessibilityLabel="Item title" value={title} onChangeText={setTitle} style={s.input} /><Text style={s.label}>Description</Text><TextInput accessibilityLabel="Item description" value={description} onChangeText={setDescription} style={s.input} multiline /><Text style={s.label}>Photo URL</Text><TextInput accessibilityLabel="Photo URL" placeholder="https://?" placeholderTextColor={palette.muted} value={photo} onChangeText={setPhoto} autoCapitalize="none" keyboardType="url" style={s.input} /><View style={s.chips}>{CATEGORIES.map((c) => <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />)}</View><Text style={s.muted}>Listed as good condition in {me.neighborhood}. Describe any wear above.</Text><View style={s.actions}><Button label="Share for free" disabled={!title.trim() || !description.trim() || !/^https?:\/\/\S+$/i.test(photo.trim())} onPress={post} /></View></Screen>;
+const { id } = useLocalSearchParams<{ id?: string }>();
+return <PostEditor key={id ?? 'new'} itemId={id} />;
 }
 const s = StyleSheet.create({
 heading: { gap: 6, marginTop: 18, marginBottom: 18 },
@@ -86,4 +93,33 @@ avatar: { width: 88, height: 88, borderRadius: 44, marginBottom: 16 },
 actions: { gap: 12, marginVertical: 20 },
 mine: { backgroundColor: palette.forestSoft, marginLeft: 24 },
 note: { fontSize: 12, color: palette.muted, marginVertical: 12 },
+});
+
+const d = StyleSheet.create({
+  summary: { paddingHorizontal: 2, gap: 12, marginBottom: 20 },
+  topline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  eyebrow: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '700', color: palette.muted },
+  status: { backgroundColor: palette.forestSoft, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  claimed: { backgroundColor: palette.line }, statusText: { color: palette.forest, fontSize: 11, fontWeight: '600' },
+  title: { fontFamily: serif, fontSize: 30, lineHeight: 36, color: palette.ink },
+  priceRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
+  price: { color: palette.terracotta, fontSize: 26, fontWeight: '700' },
+  muted: { fontSize: 12, lineHeight: 19, color: palette.muted },
+  location: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  locationText: { flex: 1, textDecorationLine: 'underline', fontSize: 13, color: palette.forest, lineHeight: 20 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  tag: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 7, backgroundColor: palette.forestSoft },
+  tagText: { color: palette.forest, fontSize: 11, fontWeight: '500' },
+  panel: { backgroundColor: palette.white, borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: palette.line, gap: 12 },
+  section: { fontSize: 17, color: palette.ink, fontWeight: '600' },
+  body: { color: palette.ink, lineHeight: 23, fontSize: 14 },
+  condition: { flexDirection: 'row', gap: 7, alignItems: 'center', alignSelf: 'flex-start', backgroundColor: palette.forestSoft, borderRadius: 9, padding: 9 },
+  conditionText: { fontSize: 13, color: palette.forest, fontWeight: '600' },
+  specs: { borderTopWidth: 1, borderTopColor: palette.line, paddingTop: 12, gap: 10 },
+  spec: { flexDirection: 'row', gap: 12 }, value: { flex: 1, fontSize: 13, color: palette.ink, textAlign: 'right' },
+  features: { gap: 8 }, feature: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hostRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 54, height: 54, borderRadius: 27 }, hostInfo: { flex: 1, gap: 2 }, hostName: { fontSize: 16, color: palette.ink, fontWeight: '600' },
+  posted: { color: palette.muted, fontSize: 11, borderTopWidth: 1, borderTopColor: palette.line, paddingTop: 12 },
+  actionPanel: { padding: 18, gap: 12, backgroundColor: palette.sage, borderRadius: 20, marginTop: 4, marginBottom: 16 },
 });

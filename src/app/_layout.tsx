@@ -1,9 +1,13 @@
-import { Tabs } from 'expo-router';
-import { TabBar } from '@/components/tab-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Stack } from 'expo-router';
 import { StoreProvider } from '@/data/store';
 export default function Layout() {
-return <StoreProvider><Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
-{['index','saved','inbox','profile'].map(name => <Tabs.Screen key={name} name={name} />)}
-{['explore','post','item','chat'].map(name => <Tabs.Screen key={name} name={name} options={{ href: null }} />)}
-</Tabs></StoreProvider>;
+  return <GestureHandlerRootView style={{ flex: 1 }}><StoreProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="item" />
+      <Stack.Screen name="post" />
+      <Stack.Screen name="chat" />
+    </Stack>
+  </StoreProvider></GestureHandlerRootView>;
 }

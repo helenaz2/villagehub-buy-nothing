@@ -54,6 +54,8 @@ export type Conversation = {
   itemId: string;
   messages: ChatMessage[];
   unread: boolean;
+  pinned?: boolean;
+  participantId?: string;
 };
 
 export type Draft = {

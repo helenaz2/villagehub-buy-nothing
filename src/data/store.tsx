@@ -14,6 +14,10 @@ type Store = {
   draft: Draft | null;
   toggleSave: (id: string) => void;
   publish: (item: Item) => void;
+  updateItem: (id: string, patch: Partial<Item>) => void;
+  deleteConversation: (id: string) => void;
+  togglePin: (id: string) => void;
+  setUnread: (id: string, unread: boolean) => void;
   claim: (id: string) => void;
   relist: (id: string) => void;
   removeItem: (id: string) => void;
@@ -66,6 +70,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setItems((current) => [item, ...current]);
         setDraft(null);
       },
+      updateItem: (id, patch) => setItems(current => current.map(item => item.id === id && item.hostId === me.id ? { ...item, ...patch, id: item.id, hostId: item.hostId } : item)),
+      deleteConversation: id => setConversations(current => current.filter(c => c.id !== id)),
+      togglePin: id => setConversations(current => current.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c)),
+      setUnread: (id, unread) => setConversations(current => current.map(c => c.id === id ? { ...c, unread } : c)),
       claim: (id: string) => {
         setItems((current) => current.map((item) => (item.id === id ? { ...item, status: 'claimed' } : item)));
       },
