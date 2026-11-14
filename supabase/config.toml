@@ -1,0 +1,10 @@
+# Minimal config for the Supabase CLI. Run `supabase init` to get the full default file if you need more.
+project_id = "curbside"
+
+[functions.scan-item]
+# The app calls this with the signed-in user's token, so keep JWT verification on.
+verify_jwt = true
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
