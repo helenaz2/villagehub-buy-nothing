@@ -8,6 +8,10 @@ import type { ChatMessage, Conversation, Draft, Item, Person } from '@/types/lis
 import { initialConversations, initialItems, initialMe, people } from './seed';
 
 type Store = {
+  signedIn: boolean;
+  accountAddress: { street: string; state: string } | null;
+  startDemoSession: (profile?: { name: string; street?: string; city: string; state: string }) => void;
+  signOut: () => void;
   categories: string[];
   proposeCategory: (name: string, reason: string) => Promise<CategoryProposalResult>;
   items: Item[];
@@ -48,6 +52,8 @@ function messageId() {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const [accountAddress, setAccountAddress] = useState<{ street: string; state: string } | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
   const [items, setItems] = useState<Item[]>(initialItems);
   const [me, setMe] = useState<Person>(initialMe);
@@ -57,6 +63,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Store>(() => {
     return {
+      accountAddress,
+      signedIn,
+      // Backend auth belongs here: replace the demo session with verified tokens.
+      startDemoSession: profile => {
+        setMe(profile ? { ...initialMe, id: 'demo_member', name: profile.name, neighborhood: profile.city, city: profile.city, state: profile.state, handle: '@' + profile.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0,24), bio: 'New to the neighborhood. Ready to share.', rating: 0, memberSince: String(new Date().getFullYear()), monthsHere: 0 } : initialMe);
+        setSavedIds(profile ? [] : ['plant']);
+        setConversations(profile ? [] : initialConversations);
+        setAccountAddress(profile ? { street: profile.street ?? '', state: profile.state } : null);
+        setSignedIn(true);
+      },
+      signOut: () => { setAccountAddress(null); setSignedIn(false); setItems(initialItems); setSavedIds(['plant']); setConversations(initialConversations); setDraft(null); setMe(initialMe); },
       categories,
       proposeCategory: async (name, reason) => {
         const result = await reviewCategoryProposal({ name, reason, proposedBy: me.id });
@@ -69,7 +86,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       savedIds,
       conversations,
       draft,
-      person: (id: string) => (id === me.id ? me : people.find((person) => person.id === id)),
+      person: (id: string) => (id === me.id ? me : id === initialMe.id ? initialMe : people.find((person) => person.id === id)),
       toggleSave: (id: string) => {
         setSavedIds((current) => (current.includes(id) ? current.filter((saved) => saved !== id) : [...current, id]));
         setItems((current) =>
@@ -158,7 +175,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         );
       },
     };
-  }, [categories, conversations, draft, items, me, savedIds]);
+  }, [accountAddress, signedIn, categories, conversations, draft, items, me, savedIds]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

@@ -11,7 +11,7 @@ import { Icon, type IconName } from './icon';
 export const TAB_BODY_HEIGHT = 78;
 
 const TABS: { name: string; label: string; icon: IconName }[] = [
-  { name: 'index', label: 'Explore', icon: 'search' },
+  { name: 'explore', label: 'Explore', icon: 'search' },
   { name: 'saved', label: 'Saved', icon: 'heart' },
   { name: 'inbox', label: 'Inbox', icon: 'mail' },
   { name: 'profile', label: 'Profile', icon: 'person' },

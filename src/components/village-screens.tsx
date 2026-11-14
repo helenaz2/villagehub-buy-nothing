@@ -45,8 +45,8 @@ const sorted = [...conversations].sort((a,b) => Number(!!b.pinned) - Number(!!a.
 return <Screen tabBar><Heading title="Inbox" subtitle="Swipe left for conversation options." />{sorted.length ? sorted.map(c => <InboxRow key={c.id} conversation={c} />) : <Text style={s.muted}>No conversations yet. Message a host to get started.</Text>}</Screen>;
 }
 export function ProfileScreen() {
-const { me, items } = useStore();
-return <Screen tabBar><Heading title={'Hi, ' + me.name} subtitle={me.handle} /><Image source={{ uri: me.avatar }} style={s.avatar} /><Text style={s.label}>{me.neighborhood}, {me.city}</Text><Text style={s.muted}>{me.bio}</Text><Text style={s.muted}>Member since {me.memberSince}</Text><Heading title="Your listings" /><Grid items={items.filter((i) => i.hostId === me.id)} /><Text style={s.note}>Demo data resets when the app restarts.</Text></Screen>;
+const { me, items, signOut } = useStore();
+return <Screen tabBar><Heading title={'Hi, ' + me.name} subtitle={me.handle} /><Image source={{ uri: me.avatar }} style={s.avatar} /><Text style={s.label}>{me.neighborhood}, {me.city}</Text><Text style={s.muted}>{me.bio}</Text><Text style={s.muted}>Member since {me.memberSince}</Text><Heading title="Your listings" /><Grid items={items.filter((i) => i.hostId === me.id)} /><Text style={s.note}>Demo data resets when the app restarts.</Text><Button label="Log out" variant="ghost" onPress={signOut} /></Screen>;
 }
 export function DetailScreen() {
 const { id } = useLocalSearchParams<{ id: string }>();

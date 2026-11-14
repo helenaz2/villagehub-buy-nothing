@@ -37,6 +37,7 @@ export type Person = {
   avatar: string;
   neighborhood: string;
   city: string;
+  state?: string;
   bio: string;
   rating: number;
   memberSince: string;
