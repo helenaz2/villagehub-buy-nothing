@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useStore } from '@/data/store';
 import { palette, serif } from '@/constants/palette';
+import { VillageLogo } from './village-logo';
 import { Screen } from './screen';
 import { Button } from './ui';
 import { BackButton } from './back-button';
@@ -11,7 +12,7 @@ import { US_STATES } from '@/constants/us-states';
 import { Icon } from './icon';
 
 export function WelcomeScreen() {
-  return <Screen scroll={false} contentStyle={s.landing}><Button label="Log in" onPress={() => router.push('/login')} /><Button label="Create account" variant="ghost" onPress={() => router.push('/create-account')} /></Screen>;
+  return <Screen contentStyle={s.landing}><View style={s.landingBrand}><View style={s.landingLogo}><VillageLogo /></View><Text accessibilityRole="header" style={s.landingTitle}>VillageHub</Text><Text style={s.landingSubtitle}>Buy Nothing</Text></View><Button label="Log in" onPress={() => router.push('/login')} /><Button label="Create account" variant="ghost" onPress={() => router.push('/create-account')} /></Screen>;
 }
 export function CreateAccountScreen() { return <AccountForm mode="signup" />; }
 export function LoginScreen() { return <AccountForm mode="login" />; }
@@ -58,7 +59,11 @@ function AccountForm({ mode }: { mode: 'signup' | 'login' }) {
   </Screen>;
 }
 const s = StyleSheet.create({
-  landing: { justifyContent: 'center', paddingHorizontal: 28, gap: 14 },
+  landing: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, gap: 14 },
+  landingBrand: { alignItems: 'center', marginBottom: 28 },
+  landingLogo: { width: '72%', maxWidth: 230, aspectRatio: 1, marginBottom: 12 },
+  landingTitle: { fontFamily: serif, fontSize: 44, color: palette.forest, textAlign: 'center' },
+  landingSubtitle: { fontSize: 19, letterSpacing: 2, color: palette.forest, textAlign: 'center', marginTop: 6 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9, marginVertical: 22 }, brandText: { fontSize: 23, fontFamily: serif, color: palette.forest },
   hero: { marginBottom: 30 }, heroImage: { width: '100%', aspectRatio: 1.2, borderRadius: 28, backgroundColor: palette.sage }, heroBadge: { position: 'absolute', bottom: 14, left: 12, right: 12, backgroundColor: palette.bg, padding: 12, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 8 }, badgeText: { color: palette.forest, fontSize: 12, flex: 1 },
   eyebrow: { fontSize: 10, letterSpacing: 1.2, fontWeight: '600', color: palette.terracotta }, headline: { fontFamily: serif, fontSize: 38, lineHeight: 44, color: palette.forest, marginVertical: 14 }, intro: { fontSize: 15, color: palette.muted, lineHeight: 24, marginBottom: 18 },
