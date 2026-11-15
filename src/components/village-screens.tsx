@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { backendConfig } from '@/lib/backend-config';
+import { useEffect, useRef, useState } from 'react';
 import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -28,30 +29,48 @@ const { savedIds, toggleSave } = useStore();
 return items.length ? <ItemGrid items={items} savedIds={savedIds} onSave={toggleSave} onPress={(id) => router.push({ pathname: '/item', params: { id } })} /> : <Text style={s.muted}>No items here yet. Try another search or save something you love.</Text>;
 }
 export function ExploreScreen() {
-const { items, categories } = useStore();
+const { items, categories, feedItems, fetchFeed, feedLoading, hasMoreListings } = useStore();
 const [query, setQuery] = useState('');
 const [category, setCategory] = useState('For you');
-return <Screen tabBar><View style={s.exploreBrand}><View style={s.exploreLogo}><VillageLogo /></View><View style={s.exploreBrandText}><Text style={s.exploreName}>VillageHub</Text><Text style={s.exploreSubtitle}>Buy Nothing</Text></View></View><Text style={s.title}>Good things, shared.</Text><Text style={s.muted}>Find something you need. Give something a new home.</Text>
+const path = usePathname();
+useEffect(() => { if (path === '/explore' && !backendConfig.demo && backendConfig.listings) { const timer=setTimeout(() => { void fetchFeed(query,category); },250); return () => clearTimeout(timer); } }, [path,query,category,fetchFeed]);
+return <Screen tabBar><View style={s.exploreBrand}><View style={s.exploreLogo}><VillageLogo /></View><View style={s.exploreBrandText}><Text style={s.exploreName}>VillageHub</Text><Text style={s.exploreSubtitle}>Buy Nothing</Text></View></View><Text style={s.title}>Good things, shared.</Text>{!backendConfig.demo && !backendConfig.listings ? <View style={s.card}><Text style={s.muted}>Your real account is connected. Listings, messaging, and ratings are scheduled for the next backend phases. No sample listings are shown in real mode.</Text><Button label="Complete or edit profile" variant="ghost" onPress={() => router.push('/complete-profile')} /></View> : null}<Text style={s.muted}>Find something you need. Give something a new home.</Text>
+{!backendConfig.demo && backendConfig.recommendations ? <Button label="Ask VillageHub to find an item" variant="ghost" onPress={()=>router.push('/recommendations')} /> : null}
 <TextInput accessibilityLabel="Search items" placeholder="Search for something lovely" placeholderTextColor={palette.muted} value={query} onChangeText={setQuery} style={s.input} />
-<View style={s.chips}>{['For you', ...categories].map((c) => <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />)}</View><ProposeCategory onApproved={setCategory} />
-<Heading title="Free in your neighborhood" /><Grid items={searchItems(items, query, category, 'All', 'Any', 'Any')} /></Screen>;
+<View style={s.chips}>{['For you', ...categories].map((c) => <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />)}</View>{backendConfig.demo || backendConfig.ai ? <ProposeCategory onApproved={setCategory} /> : null}
+<Heading title="Free in your neighborhood" />{feedLoading ? <Text style={s.muted}>Loading items...</Text> : null}<Grid items={backendConfig.demo ? searchItems(items, query, category, 'All', 'Any', 'Any') : feedItems} />{!backendConfig.demo && backendConfig.listings && hasMoreListings ? <Button label="Load more" disabled={feedLoading} variant="ghost" onPress={() => { void fetchFeed(query,category,true); }} /> : null}</Screen>;
 }
 export function SavedScreen() {
-const { items, savedIds } = useStore();
-return <Screen tabBar><Heading title="Saved" subtitle="Good finds to come back to." /><Grid items={items.filter((i) => savedIds.includes(i.id))} /></Screen>;
+const { items, savedIds, loadSavedListings, moreSaved } = useStore();
+const path = usePathname();
+useEffect(() => { if(path === '/saved') void loadSavedListings(); },[path,loadSavedListings]);
+return <Screen tabBar><Heading title="Saved" subtitle="Good finds to come back to." /><Grid items={items.filter((i) => savedIds.includes(i.id))} />{moreSaved ? <Button label="Load more saved items" onPress={() => { void loadSavedListings(true); }} variant="ghost" /> : null}</Screen>;
 }
 export function InboxScreen() {
-const { conversations } = useStore();
-const sorted = [...conversations].sort((a,b) => Number(!!b.pinned) - Number(!!a.pinned));
-return <Screen tabBar><Heading title="Inbox" subtitle="Swipe left for conversation options." />{sorted.length ? sorted.map(c => <InboxRow key={c.id} conversation={c} />) : <Text style={s.muted}>No conversations yet. Message a host to get started.</Text>}</Screen>;
+const { conversations, loadInbox, moreInbox, messagingStatus } = useStore();
+const path=usePathname();
+useEffect(()=>{if(path==='/inbox') void loadInbox();},[path,loadInbox]);
+const sorted = conversations.filter(c=>!c.hidden).sort((a,b) => Number(!!b.pinned) - Number(!!a.pinned) || (b.lastMessageAt??0)-(a.lastMessageAt??0));
+return <Screen tabBar><Heading title="Inbox" subtitle="Swipe left for conversation options." />{messagingStatus ? <Text style={s.muted}>{messagingStatus}</Text> : null}{!backendConfig.demo && backendConfig.messaging ? <Button label="Refresh inbox" variant="ghost" onPress={()=>{void loadInbox();}} /> : null}{sorted.length ? sorted.map(c => <InboxRow key={c.id} conversation={c} />) : <Text style={s.muted}>No conversations yet. Message a host to get started.</Text>}{moreInbox ? <Button label="Load more conversations" variant="ghost" onPress={()=>{void loadInbox(true);}} /> : null}</Screen>;
 }
 export function ProfileScreen() {
-const { me, items, signOut } = useStore();
-return <Screen tabBar><Heading title={'Hi, ' + me.name} subtitle={me.handle} /><Image source={{ uri: me.avatar }} style={s.avatar} /><Text style={s.label}>{me.neighborhood}, {me.city}</Text><Text style={s.muted}>{me.bio}</Text><Text style={s.muted}>Member since {me.memberSince}</Text><Heading title="Your listings" /><Grid items={items.filter((i) => i.hostId === me.id)} /><Text style={s.note}>Demo data resets when the app restarts.</Text><Button label="Log out" variant="ghost" onPress={signOut} /></Screen>;
+const { me, items, signOut, loadOwnListings, moreOwn } = useStore();
+const path = usePathname();
+useEffect(() => { if(path === '/profile') void loadOwnListings(); },[path,loadOwnListings]);
+return <Screen tabBar><Heading title={'Hi, ' + me.name} subtitle={me.handle} />{me.avatar ? <Image source={{ uri: me.avatar }} style={s.avatar} /> : <View style={[s.avatar, { backgroundColor: palette.sage, alignItems: 'center', justifyContent: 'center' }]}><Icon name="person" size={38} /></View>}<Text style={s.label}>{me.neighborhood}, {me.city}</Text><Text style={s.muted}>{me.bio}</Text><Text style={s.muted}>Member since {me.memberSince}</Text><Heading title="Your listings" /><Grid items={items.filter((i) => i.hostId === me.id)} />{moreOwn ? <Button label="Load more posts" variant="ghost" onPress={() => { void loadOwnListings(true); }} /> : null}{backendConfig.demo ? <Text style={s.note}>Demo data resets when the app restarts.</Text> : <Button label="Edit profile" variant="ghost" onPress={() => router.push('/complete-profile')} />}<Button label="Log out" variant="ghost" onPress={signOut} /></Screen>;
 }
 export function DetailScreen() {
 const { id } = useLocalSearchParams<{ id: string }>();
-const { items, person, savedIds, toggleSave, openThread, me, claim, relist, ratingFor } = useStore();
+const { items, person, savedIds, toggleSave, openThread, me, claim, relist, ratingFor, refreshListing, removeItem } = useStore();
+const [opening,setOpening]=useState(false);
+const [messageError,setMessageError]=useState<string|null>(null);
+async function messageHost() {
+  setOpening(true);setMessageError(null);
+  try {const key=await openThread(id);router.push({pathname:'/chat',params:{id:key}});}
+  catch(e) {setMessageError((e as {message?:string})?.message??'Unable to open conversation.');}
+  finally {setOpening(false);}
+}
+useEffect(() => { void refreshListing(id); },[id,refreshListing]);
 const item = items.find(i => i.id === id);
 if (!item) return <Screen><Back /><Heading title="Item unavailable" /></Screen>;
 const host = person(item.hostId);
@@ -66,21 +85,41 @@ return <Screen><Back /><ProductGallery key={item.id} photos={item.photos} title=
 <View style={d.panel}><Text style={d.section}>Condition & details</Text><View style={d.condition}><Icon name="check" size={16} /><Text style={d.conditionText}>{item.condition}</Text></View>{item.conditionNote ? <Text style={d.body}>{item.conditionNote}</Text> : null}
 <View style={d.specs}><View style={d.spec}><Text style={d.muted}>Size</Text><Text style={d.value}>{item.size || 'Not specified'}</Text></View><View style={d.spec}><Text style={d.muted}>Color</Text><Text style={d.value}>{item.color || 'Not specified'}</Text></View>{item.materials ? <View style={d.spec}><Text style={d.muted}>Materials</Text><Text style={d.value}>{item.materials}</Text></View> : null}{item.fabric ? <View style={d.spec}><Text style={d.muted}>Fabric</Text><Text style={d.value}>{item.fabric}</Text></View> : null}</View></View>
 <View style={d.panel}><Text style={d.section}>About this item</Text><Text style={d.body}>{item.description}</Text>{item.features.length ? <View style={d.features}>{item.features.map(feature => <View key={feature} style={d.feature}><Icon name="check" size={14} /><Text style={d.body}>{feature}</Text></View>)}</View> : null}</View>
-<View style={d.panel}><Text style={d.section}>Meet your neighbor</Text><Pressable accessibilityRole="button" accessibilityLabel={'View profile of ' + (host?.name ?? 'neighbor')} disabled={!host} onPress={() => host && router.push({ pathname: '/neighbor', params: { id: host.id } })} style={d.hostRow}>{host ? <><Image source={{ uri: host.avatar }} style={d.avatar} /><View style={d.hostInfo}><Text style={d.hostName}>{host.name}</Text><Text style={d.muted}>{host.handle}</Text><HostRating value={ratingFor(host.id)} /><Text style={d.muted}>Member since {host.memberSince}</Text></View></> : <Text style={d.hostName}>Neighbor</Text>}</Pressable><Text style={d.posted}>Posted {item.postedLabel.toLowerCase()}</Text></View>
-<View style={d.actionPanel}><Text style={d.section}>{own ? 'Manage your post' : 'Give it a new chapter'}</Text><Text style={d.muted}>{own ? 'Keep your neighbors up to date.' : 'Arrange pickup directly with the host.'}</Text><Button label={savedIds.includes(id) ? 'Unsave item' : 'Save item'} variant="ghost" onPress={() => toggleSave(id)} />{own ? <><Button label="Edit post" onPress={() => router.push({ pathname: '/post', params: { id } })} /><Button label={item.status === 'claimed' ? 'Relist item' : 'Mark as claimed'} variant="ghost" onPress={() => item.status === 'claimed' ? relist(id) : claim(id)} /></> : <Button label={item.status === 'claimed' ? 'Already claimed' : 'Message host'} disabled={item.status === 'claimed'} onPress={() => router.push({ pathname: '/chat', params: { id: openThread(id) } })} />}</View></Screen>;
+<View style={d.panel}><Text style={d.section}>Meet your neighbor</Text><Pressable accessibilityRole="button" accessibilityLabel={'View profile of ' + (host?.name ?? 'neighbor')} disabled={!host} onPress={() => host && router.push({ pathname: '/neighbor', params: { id: host.id } })} style={d.hostRow}>{host ? <>{host.avatar ? <Image source={{ uri: host.avatar }} style={d.avatar} /> : <View style={[d.avatar, { backgroundColor: palette.sage }]} />}<View style={d.hostInfo}><Text style={d.hostName}>{host.name}</Text><Text style={d.muted}>{host.handle}</Text><HostRating value={ratingFor(host.id)} /><Text style={d.muted}>Member since {host.memberSince}</Text></View></> : <Text style={d.hostName}>Neighbor</Text>}</Pressable><Text style={d.posted}>Posted {item.postedLabel.toLowerCase()}</Text></View>
+<View style={d.actionPanel}><Text style={d.section}>{own ? 'Manage your post' : 'Give it a new chapter'}</Text><Text style={d.muted}>{own ? 'Keep your neighbors up to date.' : 'Arrange pickup directly with the host.'}</Text><Button label={savedIds.includes(id) ? 'Unsave item' : 'Save item'} variant="ghost" onPress={() => toggleSave(id)} />{own ? <><Button label="Edit post" onPress={() => router.push({ pathname: '/post', params: { id } })} /><Button label="Delete post" variant="ghost" onPress={() => removeItem(id)} /><Button label={item.status === 'claimed' ? 'Relist item' : 'Mark as claimed'} variant="ghost" onPress={() => item.status === 'claimed' ? relist(id) : claim(id)} /></> : <Button label={item.status === 'claimed' ? 'Already claimed' : opening ? 'Opening...' : backendConfig.demo || backendConfig.messaging ? 'Message host' : 'Messaging available in Phase 3'} disabled={opening || item.status === 'claimed' || (!backendConfig.demo && !backendConfig.messaging)} onPress={() => {void messageHost();}} />}{messageError ? <Text style={s.muted}>{messageError}</Text> : null}</View></Screen>;
 
 }
 export function ChatScreen() {
 const { id } = useLocalSearchParams<{ id: string }>();
-const { conversations, items, sendMessage, markRead, person, ratingFor } = useStore();
+const { conversations, items, sendMessage, markRead, person, ratingFor, loadThread, messagingStatus } = useStore();
 const [text, setText] = useState('');
+const [sending,setSending]=useState(false);
+const [sendError,setSendError]=useState<string|null>(null);
+const retry=useRef<{id:string;text:string;key:string}|null>(null);
 const conversation = conversations.find((c) => c.id === id);
 const chatItem = items.find(i => i.id === conversation?.itemId);
 const neighbor = person(conversation?.participantId ?? chatItem?.hostId ?? '');
 const unread = conversation?.unread;
+const lastSequence=conversation?.lastSequence;
+const visibleSequence=conversation?.messages.at(-1)?.sequence;
 const pathname = usePathname();
-useEffect(() => { if (pathname === '/chat' && unread) markRead(id); }, [pathname, id, unread, markRead]);
-return <Screen keyboard><Back />{neighbor ? <Pressable accessibilityRole="button" accessibilityLabel={'View profile of ' + neighbor.name} onPress={() => router.push({ pathname: '/neighbor', params: { id: neighbor.id } })} style={[s.card, d.hostRow]}><Image source={{ uri: neighbor.avatar }} style={d.avatar} /><View><Text style={d.hostName}>{neighbor.name}</Text><Text style={d.muted}>{neighbor.handle}</Text><HostRating value={ratingFor(neighbor.id)} /></View></Pressable> : null}<Heading title={items.find((i) => i.id === conversation?.itemId)?.title ?? 'Conversation'} subtitle="Demo conversation - replies are simulated" />{conversation?.messages.map((m) => <View key={m.id} style={[s.card, m.sender === 'me' && s.mine]}><Text style={s.body}>{m.text}</Text><Text style={s.note}>{m.time}</Text></View>)}{conversation ? <><ChatRating key={id} conversation={conversation} /><TextInput accessibilityLabel="Message" placeholder="Write a friendly message" placeholderTextColor={palette.muted} value={text} onChangeText={setText} style={s.input} multiline /><Button label="Send message" disabled={!text.trim()} onPress={() => { sendMessage(id, text); setText(''); }} /></> : <Text style={s.muted}>Conversation unavailable.</Text>}</Screen>;
+useEffect(()=>{if(pathname==='/chat') void loadThread(id);},[pathname,id,loadThread]);
+useEffect(() => { if (pathname === '/chat' && unread && (backendConfig.demo || visibleSequence===lastSequence)) markRead(id); }, [pathname,id,unread,markRead,visibleSequence,lastSequence]);
+async function send() {
+  if(sending || !text.trim()) return;
+  setSending(true);setSendError(null);
+  if(!retry.current || retry.current.id!==id || retry.current.text!==text) retry.current={id,text,key:Date.now()+'-'+Math.random().toString(36).slice(2)};
+  try {await sendMessage(id,text,retry.current.key);setText('');retry.current=null;}
+  catch(e) {setSendError((e as {message?:string})?.message??'Message not sent. Try again.');}
+  finally {setSending(false);}
+}
+return <Screen keyboard><Back />{neighbor ? <Pressable accessibilityRole="button" accessibilityLabel={'View profile of ' + neighbor.name} onPress={() => router.push({ pathname: '/neighbor', params: { id: neighbor.id } })} style={[s.card, d.hostRow]}>{neighbor.avatar ? <Image source={{ uri: neighbor.avatar }} style={d.avatar} /> : <View style={[d.avatar,{backgroundColor:palette.sage}]} />}<View><Text style={d.hostName}>{neighbor.name}</Text><Text style={d.muted}>{neighbor.handle}</Text><HostRating value={ratingFor(neighbor.id)} /></View></Pressable> : null}
+<Heading title={chatItem?.title ?? conversation?.title ?? 'Conversation'} subtitle={backendConfig.demo ? 'Demo conversation - replies are simulated' : undefined} />
+{messagingStatus ? <Text style={s.muted}>{messagingStatus}</Text> : null}
+{!backendConfig.demo && backendConfig.messaging ? <Button label="Refresh conversation" variant="ghost" onPress={()=>{void loadThread(id);}} /> : null}
+{conversation?.moreMessages ? <Button label="Earlier messages" variant="ghost" onPress={()=>{void loadThread(id,true);}} /> : null}
+{conversation?.messages.map((m) => <View key={m.id} style={[s.card, m.sender === 'me' && s.mine]}><Text style={s.body}>{m.text}</Text><Text style={s.note}>{m.time}</Text></View>)}
+{conversation ? <>{backendConfig.demo || backendConfig.ratings ? <ChatRating key={id} conversation={conversation} /> : null}<TextInput accessibilityLabel="Message" placeholder="Write a friendly message" placeholderTextColor={palette.muted} value={text} onChangeText={setText} style={s.input} multiline maxLength={4000} editable={!sending} />{sendError ? <Text style={s.muted}>{sendError}</Text> : null}<Button label={sending ? 'Sending...' : 'Send message'} disabled={sending || !text.trim()} onPress={()=>{void send();}} /></> : <Text style={s.muted}>Conversation unavailable or still loading.</Text>}</Screen>;
 }
 export function PostScreen() {
 const { id } = useLocalSearchParams<{ id?: string }>();

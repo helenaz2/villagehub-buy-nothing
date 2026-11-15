@@ -1,56 +1,76 @@
-# Welcome to your Expo app 👋
+# VillageHub Buy Nothing
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo SDK 58 / React Native / Expo Router. Supabase is the selected backend.
+Frontend, migrations, tests and Edge Functions live in this repository.
 
-## Get started
+## Start
 
-1. Install dependencies
+    npm install
 
-   ```bash
-   npm install
-   ```
+Configure an ignored .env.local using .env.example, then:
 
-2. Start the app
+    npx expo start
 
-   ```bash
-   npx expo start
-   ```
+EXPO_PUBLIC_DEMO_MODE=false uses real Supabase Auth with no sample records.
+EXPO_PUBLIC_DEMO_MODE=true explicitly enables the existing frontend demo.
+Changes to environment variables require restarting/reloading Expo.
 
-In the output, you'll find options to open the app in a
+## Backend status
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Phase 1 through Phase 5 migrations were approved and applied to the disposable
+development project. Hosted two-account Auth/profile and listing/photo/RLS tests
+passed. The owner confirmed email verification and login reached Explore.
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Phase 5 is enabled in the existing .env.local: listings, private photos, owner
+actions, saved items, search, persistent Realtime messaging and two-way ratings
+are connected. The real delayed Cron-to-Edge ratings tests passed.
+Three-account messaging/RLS/Realtime tests passed. Browser posting and owner
+actions were confirmed by the owner. Two-browser chat and native flows still
+need manual verification. Password reset email delivery also remains unverified.
+Shared AI-reviewed categories and reviewable photo autofill are connected.
+The real AI/category/vision/quota tests passed using three approved paid calls;
+Books remains as a useful shared category. The owner confirmed browser photo
+suggestions, review/apply and category review work. Native AI interactions still
+need manual verification.
 
-## Get a fresh project
+The hosted CLI workflow does not require Docker. Local database tests do.
 
-When you're ready, run:
+The AI listing recommendation chatbot is deployed and enabled with
+EXPO_PUBLIC_RECOMMENDATIONS_ENABLED=true in the existing .env.local. Hosted
+search/auth/conversation tests passed using four approved paid AI calls. The
+Explore entry point opens real listing recommendations and existing detail pages.
+The owner confirmed browser conversation and listing links work. Native chatbot
+interaction still needs manual verification. See
+docs/RECOMMENDATION_CHATBOT_REVIEW.md.
 
-```bash
-npm run reset-project
-```
+Read [the status and setup guide](docs/BACKEND_STATUS.md) before live testing.
+It includes exact dashboard redirect URLs, local setup and remaining phases.
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+## Checks
 
-### Other setup steps
+    npm run lint
+    npm run typecheck
+    npm run test:phase1
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Local Supabase database tests (requires running Docker/Podman):
 
-## Learn more
+    npm run db:start
+    npm run db:reset:local
+    npm run db:test
 
-To learn more about developing your project with Expo, look at the following resources:
+The reset command is only for a disposable local database. Never reset a hosted
+project. Two-account integration tests: npm run test:auth:local, with LOCAL
+server-only test keys as described in docs/BACKEND_STATUS.md.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Layout
 
-## Join the community
+- src/app: Expo Router screens
+- src/components: existing mobile UI
+- src/data: explicit demo adapter, live adapter and auth context
+- src/lib/supabase.ts: client-only persistent Supabase client
+- src/services: Auth, public profile and private address access
+- supabase/migrations: version-controlled schema and policies
+- supabase/tests/database: two-user authorization tests
+- supabase/functions: future server-side functions
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Never put service-role keys, database passwords, or AI keys in EXPO_PUBLIC_ vars.

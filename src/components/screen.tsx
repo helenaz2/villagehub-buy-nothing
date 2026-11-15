@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, Pressable, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useStore } from '@/data/store';
 import { palette } from '@/constants/palette';
 
 import { TAB_BODY_HEIGHT } from './tab-bar';
@@ -22,6 +23,7 @@ export function Screen({
   contentStyle?: ViewStyle;
 }) {
   const insets = useSafeAreaInsets();
+  const { operationError, dismissOperationError } = useStore();
   const tabSpace = tabBar ? TAB_BODY_HEIGHT : 0;
   const footerSpace = footer ? 84 : 18;
   const body = scroll ? (
@@ -39,7 +41,7 @@ export function Screen({
   const phone = (
     <View style={styles.phone}>
       <View style={{ height: insets.top }} />
-      {body}
+<>{operationError ? <View style={{ padding: 14, backgroundColor: palette.forestSoft }}><Text accessibilityRole="alert">{operationError}</Text><Pressable accessibilityRole="button" onPress={dismissOperationError}><Text style={{ color: palette.forest, paddingTop: 8 }}>Dismiss</Text></Pressable></View> : null}{body}</>
       {footer ? <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) }]}>{footer}</View> : null}
     </View>
   );

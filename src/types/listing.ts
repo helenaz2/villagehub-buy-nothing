@@ -12,6 +12,7 @@ export type Item = {
   title: string;
   description: string;
   photos: string[];
+  photoPaths?: string[];
   size: string;
   color: string;
   condition: Condition;
@@ -45,6 +46,7 @@ export type Person = {
 };
 
 export type ChatMessage = {
+  sequence?: number;
   id: string;
   sender: 'me' | 'them';
   text: string;
@@ -53,6 +55,12 @@ export type ChatMessage = {
 };
 
 export type Conversation = {
+  title?: string;
+  preview?: string;
+  lastMessageAt?: number;
+  lastSequence?: number;
+  hidden?: boolean;
+  moreMessages?: boolean;
   id: string;
   itemId: string;
   messages: ChatMessage[];

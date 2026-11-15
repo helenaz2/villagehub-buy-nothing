@@ -1,0 +1,60 @@
+project_id = "villagehub-buy-nothing"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["http://localhost:8081/auth/callback", "http://localhost:8081/reset-password", "villagehubbuynothing://auth/callback", "villagehubbuynothing://reset-password"]
+jwt_expiry = 3600
+enable_signup = true
+minimum_password_length = 8
+
+[auth.email]
+enabled = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = true
+
+[functions.rating-invitations]
+# A server-only x-worker-key is verified by the handler, not a user JWT.
+verify_jwt = false
+
+[functions.category-review]
+# The handler validates the user JWT against Supabase Auth before paid work.
+verify_jwt = false
+
+[functions.photo-autofill]
+verify_jwt = false
+
+[functions.listing-recommendations]
+# User JWT validation is performed with Supabase Auth in the shared handler.
+verify_jwt = false

@@ -7,25 +7,34 @@ import { palette } from '@/constants/palette';
 import { Button } from './ui';
 import { ratingDueAt } from '@/lib/rating-timing';
 import { Icon } from './icon';
+import { backendConfig } from '@/lib/backend-config';
 
 export function ChatRating({ conversation: c }: { conversation: Conversation }) {
   const { me, items, person, rateConversation, dismissRating } = useStore();
   const pathname = usePathname();
   const [stars, setStars] = useState(0);
   const [readyAt, setReadyAt] = useState<number | null>(null);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState<string|null>(null);
   const host = items.find(i => i.id === c.itemId)?.hostId;
   const otherId = c.participantId ?? (host !== me.id ? host : undefined);
   const other = person(otherId ?? '');
-  const eligible = !!other && other.id !== me.id && c.messages.some(m => m.sender === 'me') && c.messages.some(m => m.sender === 'them');
+  const eligible = !!other && other.id !== me.id && (backendConfig.demo ? c.messages.some(m => m.sender === 'me') && c.messages.some(m => m.sender === 'them') : c.ratingAvailableAt!==undefined);
   const mine = c.ratings?.[me.id];
   const theirs = otherId ? c.ratings?.[otherId] : undefined;
-  const dueAt = ratingDueAt(c);
+  const dueAt = backendConfig.demo ? ratingDueAt(c) : c.ratingAvailableAt;
   useEffect(() => {
-    if (!eligible || mine || dueAt === undefined || pathname !== '/chat') return;
+    if (!backendConfig.demo || !eligible || mine || dueAt === undefined || pathname !== '/chat') return;
     const timer = setTimeout(() => setReadyAt(dueAt), Math.max(0, dueAt - Date.now()));
     return () => clearTimeout(timer);
   }, [dueAt, eligible, mine, pathname]);
-  if (!eligible || pathname !== '/chat' || dueAt === undefined || readyAt !== dueAt) return null;
+  async function submit(dismiss=false) {
+    setBusy(true);setError(null);
+    try {if(dismiss) await dismissRating(c.id);else await rateConversation(c.id,stars);}
+    catch(e) {setError((e as {message?:string})?.message??'Unable to save rating. Please try again.');}
+    finally {setBusy(false);}
+  }
+  if (!eligible || pathname !== '/chat' || dueAt === undefined || (backendConfig.demo && readyAt !== dueAt)) return null;
   if (!mine && c.ratingDismissedBy?.includes(me.id)) return null;
   return <View style={s.status} accessibilityLiveRegion="polite">
     <View style={s.sender}><Icon name="spark" size={16} /><Text style={s.small}>VillageHub assistant</Text></View>
@@ -34,8 +43,9 @@ export function ChatRating({ conversation: c }: { conversation: Conversation }) 
       <Text style={s.small}>Leave a rating whenever you are ready. Both neighbors can rate each other.</Text>
       <View style={s.stars}>{[1,2,3,4,5].map(n => <Pressable key={n} accessibilityRole="button" accessibilityLabel={n + ' stars'} accessibilityState={{ selected: stars === n }} onPress={() => setStars(n)} style={[s.star, n <= stars && s.selected]}><Icon name="star" size={24} color={n <= stars ? palette.terracotta : palette.muted} /></Pressable>)}</View>
       <Text style={s.small}>{stars ? stars + ' out of 5 stars' : 'Choose a rating'}</Text>
-      <Button label="Submit rating" disabled={!stars} onPress={() => rateConversation(c.id, stars)} />
-      <Pressable accessibilityRole="button" onPress={() => dismissRating(c.id)} style={s.skip}><Text style={s.small}>Skip for now</Text></Pressable>
+      {error ? <Text accessibilityRole="alert" style={s.small}>{error}</Text> : null}
+      <Button label={busy ? 'Saving...' : 'Submit rating'} disabled={!stars || busy} onPress={() => {void submit();}} />
+      <Pressable accessibilityRole="button" disabled={busy} onPress={() => {void submit(true);}} style={s.skip}><Text style={s.small}>Skip for now</Text></Pressable>
     </>}
   </View>;
 }

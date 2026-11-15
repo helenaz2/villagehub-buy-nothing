@@ -41,3 +41,10 @@ example
 # generated native folders
 /ios
 /android
+
+# Backend and local credentials
+.env
+.env.*
+!.env.example
+supabase/.temp/
+supabase/.branches/

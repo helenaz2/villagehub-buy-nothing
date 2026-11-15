@@ -1,47 +1,15 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useContext, useMemo, useState, type ReactNode } from 'react';
 
+import { backendConfig } from '@/lib/backend-config';
+import { LiveStoreProvider } from './live-store';
 import { CATEGORIES } from '@/types/listing';
-import { reviewCategoryProposal, type CategoryProposalResult } from '@/lib/category-proposals';
+import { reviewCategoryProposal } from '@/lib/category-proposals';
 import { hostReply } from '@/lib/replies';
+import { StoreContext, type Store } from './store-context';
 import type { ChatMessage, Conversation, Draft, Item, Person } from '@/types/listing';
 
 import { initialConversations, initialItems, initialMe, people } from './seed';
 
-type Store = {
-  signedIn: boolean;
-  accountAddress: { street: string; state: string } | null;
-  startDemoSession: (profile?: { name: string; street?: string; city: string; state: string }) => void;
-  signOut: () => void;
-  categories: string[];
-  proposeCategory: (name: string, reason: string) => Promise<CategoryProposalResult>;
-  items: Item[];
-  people: Person[];
-  me: Person;
-  savedIds: string[];
-  conversations: Conversation[];
-  draft: Draft | null;
-  toggleSave: (id: string) => void;
-  publish: (item: Item) => void;
-  updateItem: (id: string, patch: Partial<Item>) => void;
-  deleteConversation: (id: string) => void;
-  togglePin: (id: string) => void;
-  setUnread: (id: string, unread: boolean) => void;
-  claim: (id: string) => void;
-  relist: (id: string) => void;
-  removeItem: (id: string) => void;
-  saveDraft: (draft: Draft) => void;
-  clearDraft: () => void;
-  updateMe: (patch: Partial<Person>) => void;
-  openThread: (itemId: string) => string;
-  sendMessage: (conversationId: string, text: string) => void;
-  rateConversation: (id: string, stars: number) => void;
-  dismissRating: (id: string) => void;
-  ratingFor: (personId: string) => number;
-  markRead: (conversationId: string) => void;
-  person: (id: string) => Person | undefined;
-};
-
-const StoreContext = createContext<Store | null>(null);
 
 function nowLabel() {
   return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -52,6 +20,10 @@ function messageId() {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  return backendConfig.demo ? <DemoStoreProvider>{children}</DemoStoreProvider> : <LiveStoreProvider>{children}</LiveStoreProvider>;
+}
+
+function DemoStoreProvider({ children }: { children: ReactNode }) {
   const [accountAddress, setAccountAddress] = useState<{ street: string; state: string } | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [categories, setCategories] = useState<string[]>([...CATEGORIES]);
@@ -63,6 +35,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Store>(() => {
     return {
+      feedItems: items, feedLoading: false, hasMoreListings: false, moreOwn: false, moreSaved: false,
+      fetchFeed: async () => {}, refreshListing: async () => {}, loadOwnListings: async () => {}, loadSavedListings: async () => {},
+      operationError: null, dismissOperationError: () => {},
+      loading: false, storeError: null, retry: () => {},
       accountAddress,
       signedIn,
       // Backend auth belongs here: replace the demo session with verified tokens.
@@ -75,6 +51,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       signOut: () => { setAccountAddress(null); setSignedIn(false); setItems(initialItems); setSavedIds(['plant']); setConversations(initialConversations); setDraft(null); setMe(initialMe); },
       categories,
+      reloadCategories:async () => {},
       proposeCategory: async (name, reason) => {
         const result = await reviewCategoryProposal({ name, reason, proposedBy: me.id });
         if (result.status === 'approved') setCategories(current => current.some(c => c.toLowerCase() === result.name.toLowerCase()) ? current : [...current.filter(c => c !== 'Other'), result.name, ...current.filter(c => c === 'Other')]);
@@ -85,6 +62,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       me,
       savedIds,
       conversations,
+      loadInbox:async () => {},loadThread:async () => {},moreInbox:false,messagingStatus:null,
       draft,
       person: (id: string) => (id === me.id ? me : id === initialMe.id ? initialMe : people.find((person) => person.id === id)),
       toggleSave: (id: string) => {
