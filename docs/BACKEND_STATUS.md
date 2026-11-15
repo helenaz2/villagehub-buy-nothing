@@ -128,6 +128,13 @@ installing Docker.
 
 ## Configuration
 
+Signup email codes: app code-entry, resend and verification are implemented.
+Seventeen local Auth tests, lint/typecheck and the web export pass. Hosted signup
+email template still needs the owner to add `{{ .Token }}` (see
+`docs/EMAIL_CONFIRMATION_CODES.md`). Email confirmation remains enabled. No hosted
+Auth configuration was changed and no real signup emails were sent by tests.
+Email delivery and Expo Go confirmation/session restoration await manual testing.
+
 Copy `.env.example` to ignored `.env.local` for a new checkout. Use the project's
 public URL and publishable key with `EXPO_PUBLIC_` names. Never put service-role
 keys, database passwords or AI API keys in Expo variables. The phase flag selects

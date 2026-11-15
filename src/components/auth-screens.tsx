@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Redirect, router } from 'expo-router';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth } from '@/data/auth';
@@ -37,6 +37,32 @@ function AccountForm({ mode }: { mode: 'signup' | 'login' }) {
   const [city, setCity] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [verificationEmail,setVerificationEmail]=useState('');
+  const [code,setCode]=useState('');
+  const [cooldown,setCooldown]=useState(0);
+  useEffect(()=>{
+    if(!verificationEmail)return;
+    const timer=setInterval(()=>setCooldown(value=>Math.max(0,value-1)),1000);
+    return()=>clearInterval(timer);
+  },[verificationEmail]);
+  function showVerification(sent=false){
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())){setError('Enter your email address first.');return;}
+    setVerificationEmail(email.trim());setCode('');setError('');
+    setNotice(sent?'If this email needs confirmation, check your inbox for a code. If you already confirmed it, log in with your existing password instead.':'Enter the confirmation code from your email, or request a new code below.');
+    if(sent)setCooldown(60);
+  }
+  async function verifyCode(){
+    if(busy)return;setBusy(true);setError('');
+    try{await authService.verifySignupCode(verificationEmail,code);setCode('');router.replace('/explore');}
+    catch(e){setError(e instanceof Error?e.message:'Unable to verify this code. Request a new one and retry.');}
+    finally{setBusy(false);}
+  }
+  async function resendCode(){
+    if(busy||cooldown>0)return;setBusy(true);setError('');
+    try{await authService.resendSignupCode(verificationEmail);setCode('');setCooldown(60);setNotice('If this account still needs confirmation, a new code will arrive shortly. Use the most recent email.');}
+    catch(e){setCooldown(60);setError(e instanceof Error?e.message:'Unable to resend. Please try later.');}
+    finally{setBusy(false);}
+  }
   async function submit() {
     if (busy) return;
     setError(''); setNotice('');
@@ -52,13 +78,13 @@ function AccountForm({ mode }: { mode: 'signup' | 'login' }) {
       } else if (signup) {
         await rememberPendingStreet(email, street);
         const data = await authService.signUp({ name, email, password, city, state });
-        setNotice(data.session ? 'Account created.' : 'Check your email to confirm your account, then log in on this device. Your optional street is kept privately on this device for up to 24 hours until confirmation.');
+        if(data.session){router.replace('/explore');}else{showVerification(true);}
       } else {
         await authService.signIn(email, password);
         router.replace('/explore');
       }
       setPassword(''); setConfirm('');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to continue. Please try again.'); }
+    } catch (e) { if(!signup && (e as {code?:string})?.code==='email_not_confirmed'){showVerification();}else{setError(e instanceof Error ? e.message : 'Unable to continue. Please try again.');} }
     finally { setBusy(false); }
   }
   async function resetPassword() {
@@ -74,6 +100,7 @@ function AccountForm({ mode }: { mode: 'signup' | 'login' }) {
   function field(label: string, value: string, change: (text: string) => void, placeholder: string) {
     return <View style={s.field}><Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} style={s.input} value={value} onChangeText={change} placeholder={placeholder} placeholderTextColor={palette.muted} /></View>;
   }
+  if(verificationEmail)return <Screen keyboard><BackButton label="Back" onPress={()=>{if(!busy){setVerificationEmail('');setCode('');setNotice('');setError('');}}} /><View style={s.brand}><Icon name="mail" size={22} /><Text style={s.brandText}>VillageHub</Text></View><Text style={s.headline}>Check your email</Text><Text style={s.intro}>{'Confirm '+verificationEmail+' using the code from your email. You can enter it directly in Expo Go.'}</Text><View style={s.form}><Text style={s.label}>Confirmation code</Text><TextInput accessibilityLabel="Email confirmation code" value={code} onChangeText={value=>setCode(value.replace(/\s/g,''))} placeholder="Enter your code" placeholderTextColor={palette.muted} style={s.input} keyboardType="number-pad" autoComplete="one-time-code" textContentType="oneTimeCode" autoCapitalize="none" autoCorrect={false} maxLength={10} editable={!busy} />{notice?<Text accessibilityLiveRegion="polite" style={s.notice}>{notice}</Text>:null}{error?<Text accessibilityRole="alert" style={s.error}>{error}</Text>:null}<Button label={busy?'Please wait...':'Confirm email'} disabled={busy||!/^\d{6,10}$/.test(code.trim())} onPress={()=>{void verifyCode();}} /><Button label={cooldown>0?'Resend code in '+cooldown+'s':'Resend code'} variant="ghost" disabled={busy||cooldown>0} onPress={()=>{void resendCode();}} /><Text style={s.notice}>Use the latest code. If it expired, request another. Your password stays the same. Already confirmed accounts do not receive signup codes.</Text><Button label="Log in instead" variant="ghost" disabled={busy} onPress={()=>router.replace('/login')} /></View></Screen>;
   return <Screen keyboard><BackButton /><View style={s.brand}><Icon name="heart" size={22} /><Text style={s.brandText}>VillageHub</Text></View>
     <Text style={s.headline}>{signup ? 'A place to belong.' : 'Welcome back.'}</Text><Text style={s.intro}>{signup ? 'Start sharing good things with the people around you.' : 'Your neighborhood has something good waiting.'}</Text>
     {backendConfig.demo ? <View style={s.noticeBox}><Text style={s.noticeText}>Demo mode: credentials are not verified or saved. Log in opens the Alex Chen sample profile.</Text></View> : null}
@@ -84,6 +111,7 @@ function AccountForm({ mode }: { mode: 'signup' | 'login' }) {
       <View style={s.field}><View style={s.passwordLabel}><Text style={s.label}>{signup ? 'Password *' : 'Password'}</Text><Pressable accessibilityRole="button" accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} onPress={() => setShowPassword(current => !current)} style={s.show}><Text style={s.link}>{showPassword ? 'Hide' : 'Show'}</Text></Pressable></View><TextInput accessibilityLabel="Password" style={s.input} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} placeholder="At least 8 characters" placeholderTextColor={palette.muted} autoCapitalize="none" autoCorrect={false} autoComplete="off" /></View>
       {signup ? <><View style={s.field}><Text style={s.label}>Confirm password *</Text><TextInput accessibilityLabel="Confirm password" style={s.input} value={confirm} onChangeText={setConfirm} secureTextEntry={!showPassword} placeholder="Repeat your password" placeholderTextColor={palette.muted} autoCapitalize="none" autoCorrect={false} autoComplete="off" /></View>{field('City *', city, setCity, 'e.g. Brooklyn')}{field('Street (optional)', street, setStreet, 'Street address')}<StateDropdown value={state} onChange={setState} /><Text style={s.notice}>Fields marked * are required. Street is optional and is not shown on your public profile.</Text></> : null}
       {!signup ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { void resetPassword(); }} style={s.show}><Text style={s.link}>Forgot password</Text></Pressable> : null}
+      {!signup&&!backendConfig.demo?<Pressable accessibilityRole="button" disabled={busy} onPress={()=>showVerification()} style={s.show}><Text style={s.link}>Confirm email with a code</Text></Pressable>:null}
       {notice ? <Text accessibilityLiveRegion="polite" style={s.notice}>{notice}</Text> : null}
       {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
       <Button label={busy ? 'Please wait...' : signup ? 'Create account' : 'Log in'} disabled={busy} onPress={() => { void submit(); }} />

@@ -18,6 +18,31 @@ function authService(auth) {
     '@/lib/supabase': { getSupabase: () => ({ auth }) },
   }, { window: { location: { origin: 'http://localhost:8081' } } });
 }
+
+test('confirmation code verifies email on this client without a browser exchange',async()=>{
+ let sent;const session={user:{id:'new-user'}};
+ const api=authService({verifyOtp:async input=>{sent=input;return {data:{session},error:null};}});
+ const result=await api.verifySignupCode(' alice@example.test ',' 001234 ');
+ assert.deepEqual(JSON.parse(JSON.stringify(sent)),{email:'alice@example.test',token:'001234',type:'email'});
+ assert.equal(result.session,session);
+});
+test('malformed confirmation codes are refused before contacting Auth',async()=>{
+ let calls=0;const api=authService({verifyOtp:async()=>{calls++;}});
+ for(const code of ['','123','abcd12','12345678901'])await assert.rejects(api.verifySignupCode('alice@example.test',code));
+ await assert.rejects(api.verifySignupCode('invalid','123456'));assert.equal(calls,0);
+});
+test('expired or reused codes do not produce a session',async()=>{
+ const expired=new Error('Token has expired or is invalid');
+ await assert.rejects(authService({verifyOtp:async()=>({data:{session:null},error:expired})}).verifySignupCode('alice@example.test','123456'),/expired or is invalid/);
+ await assert.rejects(authService({verifyOtp:async()=>({data:{session:null},error:null})}).verifySignupCode('alice@example.test','123456'),/No session/);
+});
+test('resend requests only an existing signup confirmation, without a password or redirect',async()=>{
+ let sent;await authService({resend:async input=>{sent=input;return {error:null};}}).resendSignupCode(' alice@example.test ');
+ assert.deepEqual(JSON.parse(JSON.stringify(sent)),{type:'signup',email:'alice@example.test'});
+});
+test('resend throttling errors propagate instead of claiming an email was sent',async()=>{
+ await assert.rejects(authService({resend:async()=>({error:new Error('Email rate limit exceeded')})}).resendSignupCode('alice@example.test'),/rate limit/);
+});
 test('signup sends public metadata only and correct confirmation redirect', async () => {
   let sent;
   const api = authService({ signUp: async input => { sent = input; return { data: { session: null }, error: null }; } });

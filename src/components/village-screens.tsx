@@ -85,7 +85,7 @@ return <Screen><Back /><ProductGallery key={item.id} photos={item.photos} title=
 <View style={d.topline}><Text style={d.eyebrow}>{item.category}</Text><View style={[d.status, item.status === 'claimed' && d.claimed]}><Text style={d.statusText}>{item.status === 'available' ? 'Available' : 'Claimed'}</Text></View></View>
 <Text style={d.title}>{item.title}</Text><View style={d.priceRow}><Text style={d.price}>Free</Text><Text style={d.muted}>A new home, at no cost</Text></View>
 <View style={d.location}><Icon name="pin" size={16} /><Text style={d.locationText}>{item.neighborhood}, {item.city}</Text></View>
-<View style={d.tags}>{[item.category,...item.tags].filter((tag,i,all) => all.indexOf(tag) === i).map(tag => <View key={tag} style={d.tag}><Text style={d.tagText}>#{tag.replace(/^#+/, '').replace(/\s+/g, '')}</Text></View>)}</View>
+<View style={d.tags}>{[item.category,...item.tags].filter((tag,i,all) => all.indexOf(tag) === i).map(tag => <Pressable key={tag} accessibilityRole="button" accessibilityLabel={'Browse '+tag} onPress={()=>router.push({pathname:'/tag',params:{name:tag,kind:tag===item.category?'category':'tag'}})} style={d.tag}><Text style={d.tagText}>#{tag.replace(/^#+/, '').replace(/\s+/g, '')}</Text></Pressable>)}</View>
 </View>
 <View style={d.panel}><Text style={d.section}>Condition & details</Text><View style={d.condition}><Icon name="check" size={16} /><Text style={d.conditionText}>{item.condition}</Text></View>{item.conditionNote ? <Text style={d.body}>{item.conditionNote}</Text> : null}
 <View style={d.specs}><View style={d.spec}><Text style={d.muted}>Size</Text><Text style={d.value}>{item.size || 'Not specified'}</Text></View><View style={d.spec}><Text style={d.muted}>Color</Text><Text style={d.value}>{item.color || 'Not specified'}</Text></View>{item.materials ? <View style={d.spec}><Text style={d.muted}>Materials</Text><Text style={d.value}>{item.materials}</Text></View> : null}{item.fabric ? <View style={d.spec}><Text style={d.muted}>Fabric</Text><Text style={d.value}>{item.fabric}</Text></View> : null}</View></View>
@@ -173,7 +173,7 @@ const d = StyleSheet.create({
   location: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   locationText: { flex: 1, textDecorationLine: 'underline', fontSize: 13, color: palette.forest, lineHeight: 20 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tag: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 7, backgroundColor: palette.forestSoft },
+  tag: { paddingHorizontal: 10, paddingVertical: 8, minHeight:44, justifyContent:'center', borderRadius: 7, backgroundColor: palette.forestSoft },
   tagText: { color: palette.forest, fontSize: 11, fontWeight: '500' },
   panel: { backgroundColor: palette.white, borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: palette.line, gap: 12 },
   section: { fontSize: 17, color: palette.ink, fontWeight: '600' },

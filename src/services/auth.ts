@@ -24,6 +24,19 @@ export async function signIn(email: string, password: string) {
   if (error) throw error;
   return data;
 }
+export async function verifySignupCode(email:string,code:string){
+  const token=code.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())||!/^\d{6,10}$/.test(token))throw new Error('Enter your email and the numeric code from your confirmation email.');
+  const {data,error}=await getSupabase().auth.verifyOtp({email:email.trim(),token,type:'email'});
+  if(error)throw error;
+  if(!data.session)throw new Error('No session was created. Request a new code and try again.');
+  return data;
+}
+export async function resendSignupCode(email:string){
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))throw new Error('Enter a valid email address.');
+  const {error}=await getSupabase().auth.resend({type:'signup',email:email.trim()});
+  if(error)throw error;
+}
 export async function sendPasswordReset(email: string) {
   const { error } = await getSupabase().auth.resetPasswordForEmail(email.trim(), { redirectTo: callbackUrl(true) });
   if (error) throw error;

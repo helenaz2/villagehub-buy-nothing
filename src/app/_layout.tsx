@@ -21,7 +21,7 @@ function Navigator() {
       <Stack.Screen name="welcome" /><Stack.Screen name="create-account" /><Stack.Screen name="login" />
     </Stack.Protected>
     <Stack.Protected guard={signedIn && (backendConfig.demo || !auth.recovering)}>
-      <Stack.Screen name="(tabs)" /><Stack.Screen name="item" /><Stack.Screen name="post" /><Stack.Screen name="chat" /><Stack.Screen name="neighbor" /><Stack.Screen name="complete-profile" /><Stack.Screen name="recommendations" />
+      <Stack.Screen name="(tabs)" /><Stack.Screen name="item" /><Stack.Screen name="post" /><Stack.Screen name="chat" /><Stack.Screen name="neighbor" /><Stack.Screen name="complete-profile" /><Stack.Screen name="recommendations" /><Stack.Screen name="tag" />
     </Stack.Protected>
   </Stack>;
 }

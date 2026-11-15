@@ -44,6 +44,10 @@ double_confirm_changes = true
 enable_confirmations = true
 secure_password_change = true
 
+[auth.email.template.confirmation]
+subject = "Your VillageHub confirmation code"
+content_path = "./supabase/templates/confirmation.html"
+
 [functions.rating-invitations]
 # A server-only x-worker-key is verified by the handler, not a user JWT.
 verify_jwt = false

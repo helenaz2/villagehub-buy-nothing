@@ -19,7 +19,7 @@ export async function hydrateListing(row: ListingRow): Promise<Item> {
   if (data?.some(p => p.error || !p.signedUrl)) throw new Error('A listing photo could not be loaded. Please refresh.');
   return { id: row.id, hostId: row.owner_id, title: row.title, description: row.description, condition: row.condition, conditionNote: row.condition_note, size: row.size, color: row.color, neighborhood: row.neighborhood, city: row.city, tags: row.tags, features: row.features, materials: row.materials, fabric: row.fabric, status: row.status, category: row.categories.name, photos: data?.map(p => p.signedUrl as string) ?? [], photoPaths: paths, postedLabel: new Date(row.created_at).toLocaleDateString(), distance: '', saves: 0 };
 }
-export async function listListings({ query = '', category = 'For you', offset = 0, ownerId, savedOnly = false }: { query?: string; category?: string; offset?: number; ownerId?: string; savedOnly?: boolean } = {}) {
+export async function listListings({ query = '', category = 'For you', offset = 0, ownerId, savedOnly = false, tag }: { query?: string; category?: string; offset?: number; ownerId?: string; savedOnly?: boolean; tag?: string } = {}) {
   const client = getSupabase();
   let ids: string[] | undefined;
   if (savedOnly) {
@@ -32,6 +32,10 @@ export async function listListings({ query = '', category = 'For you', offset = 
   if (ownerId) request = request.eq('owner_id', ownerId);
   else if (!savedOnly) request = request.eq('status','available');
   if (ids) request = request.in('id',ids);
+  if (tag !== undefined) {
+    if(!tag.trim() || tag.length>2000)throw new Error('Choose a valid tag.');
+    request=request.contains('tags',[tag]);
+  }
   if (category !== 'For you') {
     const match = (await getCategories()).find(c => c.name === category);
     if (!match) return [];
