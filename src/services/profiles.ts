@@ -13,6 +13,7 @@ export async function fetchProfile(id: string): Promise<Person | null> {
   if (error) throw error;
   if(!data) return null;
   const person=profileToPerson(data as ProfileRow);
+  if(backendConfig.profilePhotos)person.avatar=await (await import('./profile-photos')).getProfilePhoto(id);
   if(backendConfig.ratings) person.rating=Number((await getRatingStats([id]))[0]?.average_rating??0);
   return person;
 }

@@ -17,6 +17,7 @@ import { useStore } from '@/data/store';
 import { searchItems } from '@/lib/search';
 import { InboxRow } from './inbox-row';
 import { PostEditor } from './post-editor';
+import { FloatingAssistant } from './floating-assistant';
 import { ProposeCategory } from './propose-category';
 import { type Item } from '@/types/listing';
 
@@ -34,8 +35,7 @@ const [query, setQuery] = useState('');
 const [category, setCategory] = useState('For you');
 const path = usePathname();
 useEffect(() => { if (path === '/explore' && !backendConfig.demo && backendConfig.listings) { const timer=setTimeout(() => { void fetchFeed(query,category); },250); return () => clearTimeout(timer); } }, [path,query,category,fetchFeed]);
-return <Screen tabBar><View style={s.exploreBrand}><View style={s.exploreLogo}><VillageLogo /></View><View style={s.exploreBrandText}><Text style={s.exploreName}>VillageHub</Text><Text style={s.exploreSubtitle}>Buy Nothing</Text></View></View><Text style={s.title}>Good things, shared.</Text>{!backendConfig.demo && !backendConfig.listings ? <View style={s.card}><Text style={s.muted}>Your real account is connected. Listings, messaging, and ratings are scheduled for the next backend phases. No sample listings are shown in real mode.</Text><Button label="Complete or edit profile" variant="ghost" onPress={() => router.push('/complete-profile')} /></View> : null}<Text style={s.muted}>Find something you need. Give something a new home.</Text>
-{!backendConfig.demo && backendConfig.recommendations ? <Button label="Ask VillageHub to find an item" variant="ghost" onPress={()=>router.push('/recommendations')} /> : null}
+return <Screen tabBar keyboard overlay={!backendConfig.demo && backendConfig.recommendations ? <FloatingAssistant /> : null}><View style={s.exploreBrand}><View style={s.exploreLogo}><VillageLogo /></View><View style={s.exploreBrandText}><Text style={s.exploreName}>VillageHub</Text><Text style={s.exploreSubtitle}>Buy Nothing</Text></View></View><Text style={s.title}>Good things, shared.</Text>{!backendConfig.demo && !backendConfig.listings ? <View style={s.card}><Text style={s.muted}>Your real account is connected. Listings, messaging, and ratings are scheduled for the next backend phases. No sample listings are shown in real mode.</Text><Button label="Complete or edit profile" variant="ghost" onPress={() => router.push('/complete-profile')} /></View> : null}<Text style={s.muted}>Find something you need. Give something a new home.</Text>
 <TextInput accessibilityLabel="Search items" placeholder="Search for something lovely" placeholderTextColor={palette.muted} value={query} onChangeText={setQuery} style={s.input} />
 <View style={s.chips}>{['For you', ...categories].map((c) => <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />)}</View>{backendConfig.demo || backendConfig.ai ? <ProposeCategory onApproved={setCategory} /> : null}
 <Heading title="Free in your neighborhood" />{feedLoading ? <Text style={s.muted}>Loading items...</Text> : null}<Grid items={backendConfig.demo ? searchItems(items, query, category, 'All', 'Any', 'Any') : feedItems} />{!backendConfig.demo && backendConfig.listings && hasMoreListings ? <Button label="Load more" disabled={feedLoading} variant="ghost" onPress={() => { void fetchFeed(query,category,true); }} /> : null}</Screen>;
@@ -50,14 +50,18 @@ export function InboxScreen() {
 const { conversations, loadInbox, moreInbox, messagingStatus } = useStore();
 const path=usePathname();
 useEffect(()=>{if(path==='/inbox') void loadInbox();},[path,loadInbox]);
+const [refreshing,setRefreshing]=useState(false);
+async function refreshInbox(){if(refreshing)return;setRefreshing(true);try{await loadInbox();}finally{setRefreshing(false);}}
 const sorted = conversations.filter(c=>!c.hidden).sort((a,b) => Number(!!b.pinned) - Number(!!a.pinned) || (b.lastMessageAt??0)-(a.lastMessageAt??0));
-return <Screen tabBar><Heading title="Inbox" subtitle="Swipe left for conversation options." />{messagingStatus ? <Text style={s.muted}>{messagingStatus}</Text> : null}{!backendConfig.demo && backendConfig.messaging ? <Button label="Refresh inbox" variant="ghost" onPress={()=>{void loadInbox();}} /> : null}{sorted.length ? sorted.map(c => <InboxRow key={c.id} conversation={c} />) : <Text style={s.muted}>No conversations yet. Message a host to get started.</Text>}{moreInbox ? <Button label="Load more conversations" variant="ghost" onPress={()=>{void loadInbox(true);}} /> : null}</Screen>;
+return <Screen tabBar><View style={s.inboxHeading}><View style={{flex:1}}><Heading title="Inbox" subtitle="Swipe left for conversation options." /></View>{!backendConfig.demo && backendConfig.messaging ? <Pressable accessibilityRole="button" accessibilityLabel="Refresh inbox" disabled={refreshing} onPress={()=>{void refreshInbox();}} style={s.refreshInbox}><Text style={s.refreshLabel}>{refreshing?'Refreshing...':'Refresh'}</Text></Pressable> : null}</View>{messagingStatus ? <Text style={s.muted}>{messagingStatus}</Text> : null}{sorted.length ? sorted.map(c => <InboxRow key={c.id} conversation={c} />) : <Text style={s.muted}>No conversations yet. Message a host to get started.</Text>}{moreInbox ? <Button label="Load more conversations" variant="ghost" onPress={()=>{void loadInbox(true);}} /> : null}</Screen>;
 }
 export function ProfileScreen() {
 const { me, items, signOut, loadOwnListings, moreOwn } = useStore();
 const path = usePathname();
 useEffect(() => { if(path === '/profile') void loadOwnListings(); },[path,loadOwnListings]);
-return <Screen tabBar><Heading title={'Hi, ' + me.name} subtitle={me.handle} />{me.avatar ? <Image source={{ uri: me.avatar }} style={s.avatar} /> : <View style={[s.avatar, { backgroundColor: palette.sage, alignItems: 'center', justifyContent: 'center' }]}><Icon name="person" size={38} /></View>}<Text style={s.label}>{me.neighborhood}, {me.city}</Text><Text style={s.muted}>{me.bio}</Text><Text style={s.muted}>Member since {me.memberSince}</Text><Heading title="Your listings" /><Grid items={items.filter((i) => i.hostId === me.id)} />{moreOwn ? <Button label="Load more posts" variant="ghost" onPress={() => { void loadOwnListings(true); }} /> : null}{backendConfig.demo ? <Text style={s.note}>Demo data resets when the app restarts.</Text> : <Button label="Edit profile" variant="ghost" onPress={() => router.push('/complete-profile')} />}<Button label="Log out" variant="ghost" onPress={signOut} /></Screen>;
+return <Screen tabBar>
+<View style={s.profileHeader}><View style={s.profileIdentity}><Heading title={'Hi, ' + me.name} subtitle={me.handle} />{me.avatar ? <Image source={{ uri: me.avatar }} style={s.avatar} /> : <View style={[s.avatar, { backgroundColor: palette.sage, alignItems: 'center', justifyContent: 'center' }]}><Icon name="person" size={38} /></View>}<Text style={s.label}>{[me.neighborhood,me.city].filter(Boolean).join(', ')}</Text><Text style={s.muted}>{me.bio}</Text><Text style={s.muted}>Member since {me.memberSince}</Text></View>{!backendConfig.demo ? <Pressable accessibilityRole="button" onPress={() => router.push('/complete-profile')} style={s.editProfile}><Text style={s.profileButtonLabel}>Edit profile</Text></Pressable> : null}</View>
+<Heading title="Your listings" /><Grid items={items.filter((i) => i.hostId === me.id)} />{moreOwn ? <Button label="Load more posts" variant="ghost" onPress={() => { void loadOwnListings(true); }} /> : null}{backendConfig.demo ? <Text style={s.note}>Demo data resets when the app restarts.</Text> : null}<View style={s.logoutSpace}><Pressable accessibilityRole="button" onPress={signOut} style={s.logout}><Text style={[s.profileButtonLabel,{fontSize:14,color:palette.danger}]}>Log out</Text></Pressable></View></Screen>;
 }
 export function DetailScreen() {
 const { id } = useLocalSearchParams<{ id: string }>();
@@ -126,6 +130,15 @@ const { id } = useLocalSearchParams<{ id?: string }>();
 return <PostEditor key={id ?? 'new'} itemId={id} />;
 }
 const s = StyleSheet.create({
+profileHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+profileIdentity: { flex: 1, gap: 4 },
+editProfile: { marginTop: 18, minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.white, borderRadius: 12 },
+profileButtonLabel: { fontSize: 12, fontWeight: '500', color: palette.forest },
+logoutSpace: { marginTop: 48, marginBottom: 12, alignSelf: 'center', minHeight: 44, justifyContent: 'center' },
+logout: { minWidth: 156, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 10, backgroundColor: '#F8E1DF', borderWidth: 1, borderColor: '#EBC1BE', borderRadius: 12 },
+inboxHeading:{flexDirection:'row',alignItems:'flex-start',gap:8},
+refreshInbox:{marginTop:18,minHeight:44,paddingHorizontal:10,justifyContent:'center',borderRadius:12,borderWidth:1,borderColor:palette.line,backgroundColor:palette.white},
+refreshLabel:{fontSize:12,color:palette.forest,fontWeight:'600'},
 exploreBrand: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10, marginBottom: 24 },
 exploreLogo: { width: 58, height: 58 },
 exploreBrandText: { flex: 1 },

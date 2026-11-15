@@ -11,6 +11,7 @@ export function Screen({
   children,
   scroll = true,
   footer,
+  overlay,
   tabBar = false,
   keyboard = false,
   contentStyle,
@@ -18,6 +19,7 @@ export function Screen({
   children: ReactNode;
   scroll?: boolean;
   footer?: ReactNode;
+  overlay?: ReactNode;
   tabBar?: boolean;
   keyboard?: boolean;
   contentStyle?: ViewStyle;
@@ -42,6 +44,7 @@ export function Screen({
     <View style={styles.phone}>
       <View style={{ height: insets.top }} />
 <>{operationError ? <View style={{ padding: 14, backgroundColor: palette.forestSoft }}><Text accessibilityRole="alert">{operationError}</Text><Pressable accessibilityRole="button" onPress={dismissOperationError}><Text style={{ color: palette.forest, paddingTop: 8 }}>Dismiss</Text></Pressable></View> : null}{body}</>
+      {overlay}
       {footer ? <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) }]}>{footer}</View> : null}
     </View>
   );

@@ -53,6 +53,7 @@
     "test:phase4": "node --test scripts/test-phase4.cjs",
     "test:phase5": "node --test scripts/test-phase5.cjs",
     "test:recommendations": "node --test scripts/test-recommendations.cjs",
+    "test:external": "node --test scripts/test-external-foundation.cjs",
     "typecheck:functions": "tsc -p supabase/functions/tsconfig.json",
     "db:start": "npx --yes supabase@3.1.0 start",
     "db:test": "npx --yes supabase@3.1.0 test db",

@@ -58,3 +58,7 @@ verify_jwt = false
 [functions.listing-recommendations]
 # User JWT validation is performed with Supabase Auth in the shared handler.
 verify_jwt = false
+
+[functions.external-submit]
+# Handler verifies the user with Auth before private URL intake. No page fetches.
+verify_jwt = false

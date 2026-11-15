@@ -1,6 +1,9 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 export type IconName =
+  | 'arrowUp'
+  | 'reload'
+  | 'chat'
   | 'search'
   | 'sliders'
   | 'heart'
@@ -30,6 +33,12 @@ export function Icon({ name, size = 22, color = '#1E3A2F', strokeWidth = 1.8 }: 
   const stroke = { stroke: color, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   switch (name) {
+    case 'arrowUp':
+      return <Svg {...common}><Path d="M12 19V5m-6 6 6-6 6 6" {...stroke} /></Svg>;
+    case 'reload':
+      return <Svg {...common}><Path d="M20 7v5h-5M19 12a7 7 0 1 0-1.8 4.8M20 12l-3-4" {...stroke} /></Svg>;
+    case 'chat':
+      return <Svg {...common}><Path d="M20 11a8 8 0 0 1-8 8H8l-5 3 1.5-6A8 8 0 1 1 20 11Z" {...stroke} /><Path d="M8 10h8M8 14h5" {...stroke} /></Svg>;
     case 'pushpin':
       return <Svg {...common}><Path d="M9 3h6l-1 6 4 4v2H6v-2l4-4-1-6ZM12 15v6" {...stroke} /></Svg>;
     case 'search':

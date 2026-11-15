@@ -6,6 +6,7 @@ export const backendConfig = {
   ratings: Number(process.env.EXPO_PUBLIC_BACKEND_PHASE ?? '1') >= 4,
   ai: Number(process.env.EXPO_PUBLIC_BACKEND_PHASE ?? '1') >= 5,
   recommendations: process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED === 'true',
+  profilePhotos: process.env.EXPO_PUBLIC_PROFILE_PHOTOS_ENABLED === 'true',
   url: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
   publishableKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',
   authRedirect: process.env.EXPO_PUBLIC_AUTH_REDIRECT_URL ?? '',

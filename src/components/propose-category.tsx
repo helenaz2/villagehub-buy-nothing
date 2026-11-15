@@ -36,17 +36,17 @@ export function ProposeCategory({ onApproved }: { onApproved?: (name: string) =>
       const result = await proposeCategory(name, reason);
       setMessage(result.message);
       if(backendConfig.ai && !backendConfig.demo)setHistory({owner:me.id,rows:await getProposals()});
-      if (result.status === 'approved') { onApproved?.(result.name); setOpen(false); setName(''); setReason(''); }
+      if (result.status === 'approved') { onApproved?.(result.name); setName(''); setReason(''); }
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to submit. Please try again.'); }
     finally { setBusy(false); }
   }
   if(!backendConfig.demo && !backendConfig.ai)return null;
   return <View style={s.wrap}><Chip compact label={open ? 'Close category form' : '+ Add Category'} onPress={() => { setOpen(current => !current); setMessage(''); }} />
-    {open ? <View style={s.form}><Text style={s.title}>Add a new category</Text><Text style={s.hint}>Suggest a category, such as Food, and explain what belongs in it.</Text>
+    {open ? <View style={s.form}><Text style={s.title}>Add a new category</Text><Text style={s.hint}>Suggest a category and explain what belongs in it. AI checks it before it joins the shared category list.</Text>
       <Text style={s.label}>Category name</Text><TextInput accessibilityLabel="Proposed category name" placeholder="Food" placeholderTextColor={palette.muted} value={name} onChangeText={setName} maxLength={40} style={s.input} editable={!busy} />
       <Text style={s.label}>Why add this category</Text><TextInput accessibilityLabel="Category proposal reason" placeholder="Describe the items neighbors could share" placeholderTextColor={palette.muted} value={reason} onChangeText={setReason} maxLength={500} multiline style={s.input} editable={!busy} />
       <Text style={s.hint}>{backendConfig.demo?'Demo: proposals auto-approve locally.':'AI reviews suggestions before adding them for everyone. If review is unavailable, your proposal stays pending.'}</Text>
-      <Button label={busy ? 'Submitting...' : 'Add category'} disabled={busy} onPress={() => { void submit(); }} />
+      <Button label={busy ? 'Reviewing...' : 'Submit for AI review'} disabled={busy} onPress={() => { void submit(); }} />
       {!backendConfig.demo && history?.owner===me.id ? history.rows.map(p=><View key={p.id}><Text style={s.label}>{p.name} · {p.status}</Text><Text style={s.hint}>{p.message}</Text>{p.status==='pending'?<Button label="Retry review" variant="ghost" disabled={busy} onPress={()=>{void retry(p.id);}} />:null}</View>):null}
     </View> : null}
     {message ? <Text accessibilityLiveRegion="polite" style={s.hint}>{message}</Text> : null}

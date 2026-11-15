@@ -148,3 +148,15 @@ The Supabase free tier is preferred; no paid Supabase resource was created. AI i
 enabled with the owner's server-only key and seven approved verification calls
 were made. Higher storage/database usage and production email delivery may add
 costs later. Server AI quotas limit requests, not a guaranteed dollar spend.
+
+## External discovery foundation (Phase A verified)
+
+Profile photos: migrations 008 and 009 are applied. The first hosted test exposed
+a missing avatar column update grant; the narrow follow-up fixed it. The rerun
+passed owner upload/edit, signed neighbor viewing, anonymous/foreign access denial,
+path validation, referenced-object deletion protection, and size/MIME limits.
+Fixture photos and references were cleaned up; test accounts remain. Local photo
+saving is enabled. Restart Expo to load the flag; device picker UI still needs
+manual verification. No AI calls or new paid resources were used.
+
+Phase A code and review are in docs/EXTERNAL_FOUNDATION_REVIEW.md. With explicit approval, migration 007 was applied (Vault skipped), only external-submit was deployed, and the official banned identity was created on 2026-11-14. The hosted two-account suite and transactional official-identity SQL guard test passed. Exact receipt/candidate/listing/photo fixtures and temporary reviewer access were removed; the official identity, two test accounts and completed run audits remain. User selected private URL submission because no authorized feed exists. No marketplace access, scheduled collection or paid AI usage occurred. All 46 local tests pass. Phases B-E, the submission UI and real external item verification remain pending.
