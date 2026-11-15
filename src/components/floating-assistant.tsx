@@ -14,7 +14,7 @@ export function FloatingAssistant(){
  const insets=useSafeAreaInsets(),path=usePathname();
  return <View pointerEvents="box-none" style={[s.anchor,{bottom:TAB_BODY_HEIGHT+insets.bottom+12},path!=='/explore' && {display:'none'}]}>
   {started?<View style={[s.panel,!open && {display:'none'}]}>
-   <View style={s.header}><View style={{flex:1}}><Text style={s.title}>VillageHub assistant</Text><Text style={s.subtitle}>Find free items nearby</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Minimize VillageHub assistant" onPress={()=>setOpen(false)} style={s.close}><Icon name="close" size={20} /></Pressable></View>
+   <View style={s.header}><View style={{flex:1}}><Text style={s.title}>VillageHub Buy Nothing</Text><Text style={s.subtitle}>Find free items nearby</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Minimize VillageHub assistant" onPress={()=>setOpen(false)} style={s.close}><Icon name="close" size={20} /></Pressable></View>
    <RecommendationChat key={me.id} embedded visible={open && path==='/explore'} />
   </View>:null}
   {!open?<Pressable accessibilityRole="button" accessibilityLabel="Open VillageHub assistant" accessibilityHint="Opens a chat panel over Explore" onPress={()=>{setStarted(true);setOpen(true);}} style={s.bubble}><Icon name="chat" size={27} color={palette.white} /></Pressable>:null}

@@ -15,9 +15,11 @@ export async function createProposal(name:string,reason:string,key:string){
  const {data,error}=await getSupabase().rpc('create_category_proposal',{p_name:name,p_reason:reason,p_client_key:key});if(error)throw new Error(error.message);
  return data as CategoryProposal;
 }
-export async function reviewProposal(id:string){return invokeAI<CategoryProposalResult>('category-review',{proposalId:id});}
-export async function getProposals(){
- const {data,error}=await getSupabase().from('category_proposals').select('id,name,status,message,created_at').order('created_at',{ascending:false}).limit(10);if(error)throw new Error(error.message);return data as CategoryProposal[];
+const proposalListeners=new Set<()=>void>();
+export function onProposalReviewed(listener:()=>void){proposalListeners.add(listener);return ()=>{proposalListeners.delete(listener);};}
+export async function reviewProposal(id:string){const result=await invokeAI<CategoryProposalResult>('category-review',{proposalId:id});proposalListeners.forEach(listener=>listener());return result;}
+export async function getProposals(limit=10){
+ const {data,error}=await getSupabase().from('category_proposals').select('id,name,status,message,created_at,reviewed_at').order('created_at',{ascending:false}).limit(Math.min(50,limit));if(error)throw new Error(error.message);return data as CategoryProposal[];
 }
 export async function suggestPhoto(image:string,key:string){return invokeAI<PhotoSuggestion>('photo-autofill',{image,requestKey:key});}
 export function subscribeCategories(userId:string,refresh:()=>void){

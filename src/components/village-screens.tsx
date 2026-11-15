@@ -15,6 +15,7 @@ import { Button, Chip } from './ui';
 import { palette, serif } from '@/constants/palette';
 import { useStore } from '@/data/store';
 import { searchItems } from '@/lib/search';
+import { AssistantInboxRow } from './assistant-inbox-row';
 import { InboxRow } from './inbox-row';
 import { PostEditor } from './post-editor';
 import { FloatingAssistant } from './floating-assistant';
@@ -53,7 +54,7 @@ useEffect(()=>{if(path==='/inbox') void loadInbox();},[path,loadInbox]);
 const [refreshing,setRefreshing]=useState(false);
 async function refreshInbox(){if(refreshing)return;setRefreshing(true);try{await loadInbox();}finally{setRefreshing(false);}}
 const sorted = conversations.filter(c=>!c.hidden).sort((a,b) => Number(!!b.pinned) - Number(!!a.pinned) || (b.lastMessageAt??0)-(a.lastMessageAt??0));
-return <Screen tabBar><View style={s.inboxHeading}><View style={{flex:1}}><Heading title="Inbox" subtitle="Swipe left for conversation options." /></View>{!backendConfig.demo && backendConfig.messaging ? <Pressable accessibilityRole="button" accessibilityLabel="Refresh inbox" disabled={refreshing} onPress={()=>{void refreshInbox();}} style={s.refreshInbox}><Text style={s.refreshLabel}>{refreshing?'Refreshing...':'Refresh'}</Text></Pressable> : null}</View>{messagingStatus ? <Text style={s.muted}>{messagingStatus}</Text> : null}{sorted.length ? sorted.map(c => <InboxRow key={c.id} conversation={c} />) : <Text style={s.muted}>No conversations yet. Message a host to get started.</Text>}{moreInbox ? <Button label="Load more conversations" variant="ghost" onPress={()=>{void loadInbox(true);}} /> : null}</Screen>;
+return <Screen tabBar><View style={s.inboxHeading}><View style={{flex:1}}><Heading title="Inbox" subtitle="Swipe left for conversation options." /></View>{!backendConfig.demo && backendConfig.messaging ? <Pressable accessibilityRole="button" accessibilityLabel="Refresh inbox" disabled={refreshing} onPress={()=>{void refreshInbox();}} style={s.refreshInbox}><Text style={s.refreshLabel}>{refreshing?'Refreshing...':'Refresh'}</Text></Pressable> : null}</View>{messagingStatus ? <Text style={s.muted}>{messagingStatus}</Text> : null}<AssistantInboxRow />{sorted.map(c => <InboxRow key={c.id} conversation={c} />)}{moreInbox ? <Button label="Load more conversations" variant="ghost" onPress={()=>{void loadInbox(true);}} /> : null}</Screen>;
 }
 export function ProfileScreen() {
 const { me, items, signOut, loadOwnListings, moreOwn } = useStore();

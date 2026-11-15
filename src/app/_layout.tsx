@@ -6,6 +6,7 @@ import { StoreProvider, useStore } from '@/data/store';
 import { Button } from '@/components/ui';
 import { palette } from '@/constants/palette';
 import { backendConfig } from '@/lib/backend-config';
+import { AssistantProvider } from '@/data/assistant';
 function Navigator() {
   const { signedIn, loading, storeError, retry, signOut } = useStore();
   const auth = useAuth();
@@ -25,5 +26,5 @@ function Navigator() {
   </Stack>;
 }
 export default function Layout() {
-  return <GestureHandlerRootView style={{ flex: 1 }}><AuthProvider><StoreProvider><Navigator /></StoreProvider></AuthProvider></GestureHandlerRootView>;
+  return <GestureHandlerRootView style={{ flex: 1 }}><AuthProvider><StoreProvider><AssistantProvider><Navigator /></AssistantProvider></StoreProvider></AuthProvider></GestureHandlerRootView>;
 }

@@ -151,6 +151,16 @@ costs later. Server AI quotas limit requests, not a guaranteed dollar spend.
 
 ## External discovery foundation (Phase A verified)
 
+Inbox assistant UI: a permanent VillageHub Buy Nothing conversation with the logo
+opens the listing assistant. Explore and Inbox share search turns and draft text
+in memory for the current account/session; switching accounts resets them. Search
+history is not persisted across app restarts. Approved/rejected category notices
+are rendered from the owner's existing RLS-protected proposal records (latest 50),
+refreshing after local review, navigation and every 30 seconds. They use no AI
+calls and need no migration/deployment. This is a feed of current category
+decisions, not a general-purpose durable notification/event history. New browser
+interaction and cross-session notice presentation still require manual UI checks.
+
 Profile photos: migrations 008 and 009 are applied. The first hosted test exposed
 a missing avatar column update grant; the narrow follow-up fixed it. The rerun
 passed owner upload/edit, signed neighbor viewing, anonymous/foreign access denial,
