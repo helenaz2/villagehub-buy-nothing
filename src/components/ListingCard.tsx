@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { Listing } from '@/data/types';
 import { ago, away, miles, pickupShort, price } from '@/lib/format';
-import { radius, space, useTheme } from '@/theme';
+import { palette, radius, space, useTheme } from '@/theme';
 
 import { Photo } from './Photo';
 import { T } from './T';
@@ -31,12 +31,21 @@ export function ListingCard({ listing, distance, size, ratio, width }: Props) {
       accessibilityLabel={`${listing.title}, ${price(listing.priceUsd)}, ${miles(distance)} away in ${listing.neighborhood}`}
       onPress={() => router.push(`/listing/${listing.id}`)}
       style={({ pressed }) => ({ width, opacity: pressed ? 0.9 : 1 })}>
-      <Photo
-        uri={listing.photos[0]}
-        rounded={lead ? 0 : radius.photo}
-        style={{ width, height: Math.round(width * ratio), opacity: listing.status === 'available' ? 1 : 0.55 }}
-        priority={lead ? 'high' : 'normal'}
-      />
+      <View>
+        <Photo
+          uri={listing.photos[0]}
+          rounded={lead ? 0 : radius.photo}
+          style={{ width, height: Math.round(width * ratio), opacity: listing.status === 'available' ? 1 : 0.55 }}
+          priority={lead ? 'high' : 'normal'}
+        />
+        {free && listing.status === 'available' ? (
+          <View style={[styles.badge, { left: lead ? space.gutter : space.xs, top: lead ? space.md : space.xs }]}>
+            <T variant="caption" style={styles.badgeText}>
+              Free
+            </T>
+          </View>
+        ) : null}
+      </View>
       <View style={{ paddingHorizontal: lead ? space.gutter : 0, paddingTop: space.sm, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.sm }}>
           <T variant={lead ? 'heading' : 'labelStrong'} style={{ flex: 1 }} numberOfLines={2}>
@@ -59,3 +68,14 @@ export function ListingCard({ listing, distance, size, ratio, width }: Props) {
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: palette.terracotta,
+  },
+  badgeText: { color: '#FFFFFF', fontFamily: 'InstrumentSans_600SemiBold' },
+});

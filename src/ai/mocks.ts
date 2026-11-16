@@ -1,5 +1,5 @@
 import type { ScanItem, ScanResult } from '@/data/schema';
-import { PHOTO, unsplash } from '@/data/seed/photos';
+import { PHOTO } from '@/data/seed/photos';
 
 /**
  * Canned scan results for six sample items. Used when no backend is
@@ -17,7 +17,7 @@ export const SAMPLES: Sample[] = [
   {
     key: 'sofa',
     label: 'Sofa',
-    photo: unsplash(PHOTO.sofaGray),
+    photo: PHOTO.sofaGray,
     item: {
       box: { x: 0.06, y: 0.3, w: 0.88, h: 0.5 },
       name: 'Gray three-seat sofa',
@@ -46,7 +46,7 @@ export const SAMPLES: Sample[] = [
   {
     key: 'office_chair',
     label: 'Office chair',
-    photo: unsplash(PHOTO.officeChairMesh),
+    photo: PHOTO.officeChairMesh,
     item: {
       box: full,
       name: 'Mesh-back office chair',
@@ -75,23 +75,23 @@ export const SAMPLES: Sample[] = [
   {
     key: 'bookshelf',
     label: 'Bookshelf',
-    photo: unsplash(PHOTO.bookshelfWood),
+    photo: PHOTO.bookshelfBirch,
     item: {
       box: full,
-      name: 'Tall wooden bookshelf',
+      name: 'Birch veneer bookshelf',
       category: 'storage',
       subcategory: 'Bookshelf',
-      color: 'Medium brown',
-      material: 'Wood',
+      color: 'Light birch',
+      material: 'Wood veneer over particleboard',
       condition: 'good',
-      dimensions_in: { w: 32, d: 12, h: 72 },
+      dimensions_in: { w: 31, d: 11, h: 42 },
       brand: null,
       description:
-        'Sturdy five-shelf bookcase. Shelves are straight with no sag, a few light scuffs along the sides. Books not included.',
-      tags: ['bookshelf', 'bookcase', 'storage', 'wood'],
-      pickup: 'two_people',
-      weight_class: 'heavy',
-      est_value_usd: 70,
+        'Four-shelf birch bookcase, waist height. Shelves are straight with no sag, a few light scuffs along the sides. Books not included.',
+      tags: ['bookshelf', 'bookcase', 'storage', 'birch'],
+      pickup: 'one_person',
+      weight_class: 'medium',
+      est_value_usd: 40,
       confidence: { name: 0.95, category: 0.98, color: 0.88, material: 0.66, condition: 0.8, dimensions: 0.58, brand: 0.1, pickup: 0.84, weight: 0.7 },
       action: {
         kind: 'give',
@@ -104,7 +104,7 @@ export const SAMPLES: Sample[] = [
   {
     key: 'microwave',
     label: 'Microwave',
-    photo: unsplash(PHOTO.microwave),
+    photo: PHOTO.microwave,
     item: {
       box: full,
       name: 'Countertop microwave',
@@ -133,7 +133,7 @@ export const SAMPLES: Sample[] = [
   {
     key: 'broken_chair',
     label: 'Broken chair',
-    photo: unsplash(PHOTO.brokenChair),
+    photo: PHOTO.brokenChair,
     item: {
       box: full,
       name: 'Wooden chair with a broken leg',
@@ -162,7 +162,7 @@ export const SAMPLES: Sample[] = [
   {
     key: 'mattress',
     label: 'Mattress',
-    photo: unsplash(PHOTO.mattress),
+    photo: PHOTO.mattress,
     item: {
       box: full,
       name: 'Quilted mattress',
@@ -197,13 +197,4 @@ export const sampleByKey = (key: SampleKey): Sample => SAMPLES.find((s) => s.key
 
 export function mockResult(key: SampleKey): ScanResult {
   return { items: [sampleByKey(key).item], prompt_version: 'mock', model: 'mock' };
-}
-
-/** With a real photo and no backend, cycle through the samples in demo-script order. */
-const cycle: SampleKey[] = ['sofa', 'broken_chair', 'office_chair', 'bookshelf', 'microwave', 'mattress'];
-let cursor = 0;
-export function nextMockKey(): SampleKey {
-  const key = cycle[cursor % cycle.length]!;
-  cursor += 1;
-  return key;
 }

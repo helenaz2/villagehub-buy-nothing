@@ -77,6 +77,7 @@ export async function precheck(uri: string): Promise<Precheck> {
 /** Resize for upload. 1024px on the long edge keeps the scan fast on mobile data. */
 export async function compressForUpload(uri: string): Promise<{ uri: string; base64: string | null }> {
   const ref = await ImageManipulator.manipulate(uri).resize({ width: 1024 }).renderAsync();
-  const out = await ref.saveAsync({ format: SaveFormat.JPEG, compress: 0.6, base64: true });
+  // 0.72 keeps labels and texture readable for the model at about 150 to 250 KB.
+  const out = await ref.saveAsync({ format: SaveFormat.JPEG, compress: 0.72, base64: true });
   return { uri: out.uri, base64: out.base64 ?? null };
 }

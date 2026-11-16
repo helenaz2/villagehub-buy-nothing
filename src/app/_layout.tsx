@@ -9,7 +9,6 @@ import {
   InstrumentSans_600SemiBold,
 } from '@expo-google-fonts/instrument-sans';
 import { useFonts } from 'expo-font';
-import { Image } from 'expo-image';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -19,7 +18,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DebugOverlay } from '@/components/DebugOverlay';
 import * as remote from '@/data/remote';
-import { allSeedPhotoUrls } from '@/data/seed/photos';
 import { useStore } from '@/data/store';
 import { syncedBackend } from '@/lib/config';
 import { useTheme } from '@/theme';
@@ -41,8 +39,6 @@ export default function RootLayout() {
   useEffect(() => useStore.persist.onFinishHydration(() => setHydrated(true)), []);
 
   useEffect(() => {
-    // Warm the photo cache once so the seeded feed still works with no signal.
-    void Image.prefetch(allSeedPhotoUrls(), 'disk').catch(() => {});
     if (syncedBackend) void remote.fetchNearby().then(useStore.getState().mergeRemoteListings);
   }, []);
 

@@ -1,24 +1,60 @@
+<img src="docs/screenshots/icon.png" width="72" alt="Curbside app icon" />
+
 # Curbside
 
-Point your camera at something you no longer need. Curbside recognizes it, writes the listing, and publishes it for neighbors in a few taps. If it isn't worth passing on, Curbside finds the nearby place that will do the most good with it.
+**Point your camera at furniture you no longer need. Curbside writes the listing, finds a neighbor who wants it, and handles the pickup. If it shouldn't go to a neighbor, it finds the place nearby that will do the most good with it.**
 
-"Curbside" is a working name. It appears in the UI strings and `app.json`.
+![Curbside: point at an item, review the listing it wrote, publish, pick a pickup time, and hand off with a QR code](docs/screenshots/hero.jpg)
 
-## Run it
+## Why
+
+Getting rid of a couch the right way is a chore. You have to take photos, measure it, write a description, answer "is this still available?" ten times, and coordinate a pickup. Most people give up and leave it on the curb, or it goes to landfill. Curbside turns all of that into one photo.
+
+## What it does
+
+- **One photo, whole listing.** A vision model names the item, then fills in its condition, size, weight, how many people it takes to carry, material, tags and a description in a neighbor's voice. It marks anything it's unsure about for a second look, and the "Not a ___?" row fixes a wrong guess in one tap.
+- **Honest about what shouldn't be passed on.** Broken, unsafe and regulated items (mattresses, cribs, car seats, refrigerant appliances) can't be listed. Curbside explains why and goes straight to the finder.
+- **Ranks where it should go.** The finder scores real Berkeley and Oakland reuse yards, charities and city services by how much good they'd do with this specific item. A paid hauler never outranks a charity.
+- **Pickup without the back-and-forth.** Suggested pickup times, porch pickup, a calendar invite, and your address stays hidden until you confirm the person claiming it.
+- **QR handoff closes the loop.** One scan marks the item picked up, asks both people for a rating, and adds the pounds kept out of landfill to your impact page.
+
+![More of Curbside: the nearby feed, an unsafe item, the ranked finder, and the impact page](docs/screenshots/more.jpg)
+
+## Try it
 
 ```bash
 npm install
 npx expo start
 ```
 
-Open it in Expo Go on a phone, or press `w` for the web build. No keys are needed. With an empty `.env` the app runs in demo mode: seeded Berkeley neighbors and listings, on-device storage, and canned AI results for six sample items, so the demo works with no signal.
+Scan the QR code with Expo Go, or press `w` to open it in a browser. **No keys or accounts are needed.** Tap **Samples** on the camera screen to run a full scan on a sofa, office chair, bookshelf, microwave, broken chair or mattress. Seeded Berkeley neighbors, listings and a scripted neighbor named Maya fill in the other side, so the whole demo works on one phone with no signal.
 
-On first launch the seeded photos load from Unsplash and are cached on the device. Open the app once on wifi before a demo.
+The 90-second walkthrough is in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
+### Scan real items (free Gemini key, nothing to deploy)
+
+```bash
+cp .env.example .env          # then set GEMINI_API_KEY=... (free from Google AI Studio)
+npx expo start                # phone on the same Wi-Fi
+npx expo start --tunnel       # campus or guest Wi-Fi, or phone on cellular
+```
+
+That's the whole setup. The Expo dev server answers scans itself at `/curbside-scan` (see `metro.config.js`), so the phone scans through the same connection it loads the app from. The key stays in `.env` on the laptop and never ships in the app. Restart `npx expo start` after changing `.env`.
+
+Without a key, the camera doesn't pretend: a real photo shows a "Demo mode" note and offers the samples instead of a made-up result. The Expo terminal logs what the model saw for every scan (`[scan] ... saw: ...`), which is the quickest way to judge accuracy.
+
+**Models.** Gemini by default: `gemini-3.5-flash` with minimal thinking, hedged with `gemini-3.1-flash-lite`. If the first model has not answered in 6 s the second starts too, and the first good answer wins, so a busy Google region costs seconds instead of a failed scan. Claude (`claude-sonnet-5-5`, forced tool call) works the same way with `ANTHROPIC_API_KEY`; if both keys are set, `SCAN_PROVIDER` picks one.
+
+**When it gets it wrong.** The edit screen shows what the model saw and a "Not a ___?" row with its runner-up guesses. Tapping one, or typing what it really is, re-scans the same photo with that as a hint, so size, weight, pickup, safety and the suggested action are redone for the right kind of item.
+
+`npm run scan-server` still exists for pointing the app at a separate machine with `EXPO_PUBLIC_SCAN_URL`.
+
+The demo photos ship inside the app (`assets/seed/`), so the feed and sample scans look right offline.
 
 ### Demo controls
 
 - **Samples** on the scanner runs a full scan on a sample photo: sofa, office chair, bookshelf, microwave, broken chair, mattress.
-- **Long-press the Curbside wordmark** on the scanner to open the debug panel. It shows scan latency and whether the result was live or mocked, switches you between Riley (you) and Maya (the neighbor), and resets all data.
+- **Long-press the Curbside wordmark** on the scanner to open a hidden debug panel. It shows whether the last scan was live or a sample, switches you between Riley (you) and Maya (the neighbor), and resets all data.
 - In demo mode a scripted neighbor claims what you publish, answers in chat, and stands in for the second phone at the QR handoff.
 
 ## Turn on the backend
@@ -46,11 +82,14 @@ The backend half has not yet been run against a live project. See [docs/LIMITATI
 phone                                         Supabase
 ─────                                         ────────
 scanner ─ on-device check (blur, light)
-        ─ resize to 1024px ──────────────────▶ scan-item edge function
-                                                 Claude vision, one forced tool call
-                                                 zod validation, one retry with the errors
-        ◀── validated JSON ──────────────────   logs latency to scan_logs
-        └ falls back to a canned result on any failure or timeout
+        ─ resize to 1024px ──▶ Expo dev server /curbside-scan (metro.config.js),
+                               npm run scan-server, or the scan-item edge function
+                                 all run _shared/scan-core.ts:
+                                 Gemini (or Claude) vision, structured output that
+                                 names the object literally before listing it,
+                                 zod validation, one retry with the errors
+        ◀── validated JSON ──  (or "no item": a retake tip, never a guess)
+        └ no AI reachable: says so; samples still run the full flow
 
 zustand store (persisted on device)  ◀──────▶ Postgres + PostGIS, RLS on every table
   listings, claims, chat, handoffs              Realtime on messages and claims
@@ -94,15 +133,21 @@ Warm paper and forest green with terracotta saved for a few moments: the shutter
 
 | Command | What it does |
 | --- | --- |
-| `npm start` | Expo dev server |
+| `npm start` | Expo dev server, which also answers live scans when `.env` has a key |
+| `npm run scan-server` | Standalone scan server on port 8787 (needs `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` in `.env`) |
+| `npm run lint` | Expo lint |
 | `npm run typecheck` | Strict TypeScript for the app and scripts |
 | `npm run export:web` | Production web build into `dist/` |
 | `npm run seed:sql` | Regenerate `supabase/seed.sql` from `src/data/seed/places.ts` |
 | `npm run seed` | Same, plus demo users and listings in a live project |
+
+## Built with
+
+Expo SDK 58 and Expo Router, React Native with Reanimated, Zustand, Gemini and Claude vision with zod-validated structured output, and Supabase (Postgres, PostGIS, row-level security, Realtime, edge functions).
 
 ## More
 
 - [90-second demo script](docs/DEMO_SCRIPT.md)
 - [Known limitations and next steps](docs/LIMITATIONS.md)
 
-Seed photos are from [Unsplash](https://unsplash.com) under the Unsplash License. Their ids are in `src/data/seed/photos.ts`.
+The app icon is drawn by `scripts/make_icons.py`. Demo photos are from Unsplash, Wikimedia Commons, Flickr and the WordPress Photo Directory under free licenses. Sources and authors are in [docs/PHOTO_CREDITS.md](docs/PHOTO_CREDITS.md).

@@ -34,6 +34,12 @@ export type Draft = {
   remaining: ScanItem[];
   source: ScanOutcome['source'];
   latencyMs: number;
+  /** Which model read the photo, for the "read by" stamp. */
+  model: string;
+  /** What the model literally saw. Shown so a misread is easy to spot. */
+  observation: string | null;
+  /** The uploaded photo, kept for a re-scan with the owner's correction. Never persisted. */
+  upload: string | null;
   mode: ClaimMode;
   availableToday: boolean;
 };
@@ -73,6 +79,8 @@ type Actions = {
   toggleDebug: () => void;
   logScan: (entry: ScanLogEntry) => void;
   startDraft: (outcome: ScanOutcome, photoUri: string, picked?: number[]) => void;
+  /** Replace the draft's AI fields with a corrected re-scan, keeping photos and choices. */
+  rescanDraft: (outcome: ScanOutcome) => void;
   patchDraft: (patch: Partial<ScanItem>) => void;
   patchDraftMeta: (patch: Partial<Pick<Draft, 'mode' | 'availableToday' | 'photos'>>) => void;
   clearDraft: () => void;
@@ -151,11 +159,31 @@ export const useStore = create<Store>()(
             remaining: rest,
             source: outcome.source,
             latencyMs: outcome.latencyMs,
+            model: outcome.result.model,
+            observation: outcome.observation ?? null,
+            upload: outcome.upload ?? null,
             mode: 'first_come',
             availableToday: true,
           },
         });
       },
+
+      rescanDraft: (outcome) =>
+        set((s) => {
+          const first = outcome.result.items[0];
+          if (!s.draft || !first) return {};
+          return {
+            draft: {
+              ...s.draft,
+              item: first,
+              original: first,
+              source: outcome.source,
+              latencyMs: outcome.latencyMs,
+              model: outcome.result.model,
+              observation: outcome.observation ?? null,
+            },
+          };
+        }),
 
       patchDraft: (patch) =>
         set((s) => (s.draft ? { draft: { ...s.draft, item: { ...s.draft.item, ...patch } } } : {})),
@@ -370,6 +398,20 @@ export const useStore = create<Store>()(
     {
       name: 'curbside-v1',
       storage: createJSONStorage(() => AsyncStorage),
+      // v2 bundled the demo photos and rewrote some seeded listings to match them. Refresh those
+      // listings in place on phones that already have data, keeping their claim status and age.
+      version: 2,
+      migrate: (persisted, version) => {
+        const data = persisted as Partial<Data> | undefined;
+        if (data?.listings && version < 2) {
+          const seeded = new Map(buildSeed(data.seededAt ?? Date.now()).listings.map((l) => [l.id, l]));
+          data.listings = data.listings.map((l) => {
+            const next = seeded.get(l.id);
+            return next ? { ...next, status: l.status, createdAt: l.createdAt, approx: l.approx } : l;
+          });
+        }
+        return data as Store;
+      },
       // The draft holds a temp photo path and should not survive a restart.
       partialize: ({ draft: _draft, ...rest }) => rest,
     },

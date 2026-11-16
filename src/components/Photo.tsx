@@ -3,6 +3,7 @@ import { Armchair } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { photoSource } from '@/data/seed/photos';
 import { useTheme } from '@/theme';
 
 type Props = {
@@ -34,7 +35,7 @@ export function Photo({ uri, style, label, rounded = 0, priority = 'normal' }: P
         </View>
       ) : (
         <Image
-          source={{ uri }}
+          source={photoSource(uri)}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={220}

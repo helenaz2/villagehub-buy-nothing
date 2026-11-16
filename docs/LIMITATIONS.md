@@ -4,10 +4,10 @@ What was checked: strict TypeScript for the app and scripts, a production web bu
 
 ## Not yet run for real
 
-- **Not tried on a phone.** Camera capture, the blur and light pre-check on real photos, haptics, accelerometer auto-capture, the native map and notifications have only been type-checked. Run it in Expo Go before the demo.
+- **Only partly tried on a phone.** Live scanning has been used from a phone in Expo Go. Haptics, accelerometer auto-capture, the native map and notifications haven't been checked end to end on a device. Run the demo script once in Expo Go before presenting.
 - **The edge function has never been called.** `scan-item` has not been deployed or run against the Anthropic API. Confirm the model id in `ANTHROPIC_MODEL` and try a few real photos.
 - **Supabase sync is untested.** The migration, row-level security, triggers and `src/data/remote.ts` were written together and type-checked, but never run against a live project. PostGIS functions were not exercised.
-- **Seed photos were not checked by eye.** They load from Unsplash by photo id. Open the app once and make sure each photo matches its listing, especially the six sample items.
+- **Demo photos are bundled.** They were checked by eye against each listing and sample. They add about 2 MB to the app.
 
 ## Partly built
 

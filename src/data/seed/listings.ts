@@ -1,6 +1,6 @@
 import type { Claim, Conversation, ImpactEvent, Listing, Message, WantedPost } from '../types';
 import { DEMO_NEIGHBOR, ME, NEIGHBORHOODS } from './people';
-import { PHOTO, unsplash } from './photos';
+import { PHOTO } from './photos';
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -36,10 +36,10 @@ const seeds: Seed[] = [
     photo: PHOTO.floorLamp, neighborhood: 'Southside', address: '2650 Durant Ave, front desk', mode: 'first_come', availableToday: true, minutesAgo: 95, nudge: [0.002, 0.001], status: 'pending',
   },
   {
-    id: 'l_desk', ownerId: 'u_kenji', title: 'Solid wood writing desk', category: 'tables', subcategory: 'Desk',
-    color: 'Natural oak', material: 'Solid wood', condition: 'good', dims: { w: 47, d: 24, h: 30 }, brand: null,
-    description: 'Simple and sturdy. A few pen marks on the top that would sand out. The plant is not included, sorry.',
-    tags: ['desk', 'wood', 'study', 'home office'], pickup: 'two_people', weightClass: 'heavy', priceUsd: 0, estValueUsd: 90,
+    id: 'l_desk', ownerId: 'u_kenji', title: 'Mid-century desk and chair', category: 'tables', subcategory: 'Desk',
+    color: 'Honey maple', material: 'Solid wood', condition: 'good', dims: { w: 45, d: 22, h: 30 }, brand: null,
+    description: 'Two deep drawers that still glide. The chair comes with it. A few pen marks on the top that would sand out. The vintage computer and lamp are staying with me.',
+    tags: ['desk', 'chair', 'mid-century', 'study', 'home office'], pickup: 'two_people', weightClass: 'heavy', priceUsd: 0, estValueUsd: 90,
     photo: PHOTO.desk, neighborhood: 'Northside', address: '1721 Euclid Ave', mode: 'owner_picks', availableToday: true, minutesAgo: 3 * 60, nudge: [0.001, 0.001],
   },
   {
@@ -65,7 +65,7 @@ const seeds: Seed[] = [
   },
   {
     id: 'l_dining', ownerId: 'u_tom', title: 'Dining table and chairs', category: 'tables', subcategory: 'Dining set',
-    color: 'Warm brown', material: 'Solid wood', condition: 'good', dims: { w: 60, d: 36, h: 30 }, brand: null,
+    color: 'Honey pine', material: 'Solid pine', condition: 'good', dims: { w: 60, d: 36, h: 30 }, brand: null,
     description: 'Seats four comfortably, six if you like each other. Legs unbolt so it lies flat in a wagon. Fed a lot of people over twelve years.',
     tags: ['dining table', 'chairs', 'wood', 'kitchen'], pickup: 'needs_disassembly', weightClass: 'very_heavy', priceUsd: 60, estValueUsd: 260,
     photo: PHOTO.diningTable, neighborhood: 'Westbrae', address: '1338 Gilman St', mode: 'owner_picks', availableToday: false, minutesAgo: 22 * 60, nudge: [0.001, 0.002],
@@ -78,39 +78,39 @@ const seeds: Seed[] = [
     photo: PHOTO.coffeeTable, neighborhood: 'Temescal', address: '482 45th St', mode: 'first_come', availableToday: true, minutesAgo: 26 * 60, nudge: [0.002, -0.002],
   },
   {
-    id: 'l_mirror', ownerId: 'u_hannah', title: 'Oval mirror, wood frame', category: 'decor', subcategory: 'Mirror',
-    color: 'Brown', material: 'Wood and glass', condition: 'like_new', dims: { w: 20, d: 2, h: 30 }, brand: null,
+    id: 'l_mirror', ownerId: 'u_hannah', title: 'Oval mirror, dark wood frame', category: 'decor', subcategory: 'Mirror',
+    color: 'Dark walnut', material: 'Wood and glass', condition: 'like_new', dims: { w: 22, d: 2, h: 32 }, brand: null,
     description: 'Hung in our hallway for a year. No chips. I will wrap it in a towel for the ride home.',
     tags: ['mirror', 'entryway', 'decor'], pickup: 'one_person', weightClass: 'light', priceUsd: 0, estValueUsd: 40,
-    photo: PHOTO.mirrorOval, neighborhood: 'Claremont', address: '14 Hillcrest Ct', mode: 'first_come', availableToday: false, minutesAgo: 30 * 60, nudge: [0.001, -0.001],
+    photo: PHOTO.mirror, neighborhood: 'Claremont', address: '14 Hillcrest Ct', mode: 'first_come', availableToday: false, minutesAgo: 30 * 60, nudge: [0.001, -0.001],
   },
   {
     id: 'l_shelf', ownerId: 'u_grace', title: 'White bookshelf', category: 'storage', subcategory: 'Bookshelf',
-    color: 'White', material: 'Painted wood', condition: 'good', dims: { w: 32, d: 11, h: 71 }, brand: null,
-    description: 'Five shelves, holds a real load of textbooks without sagging. Two small paint chips near the base.',
+    color: 'White', material: 'Laminated particleboard', condition: 'good', dims: { w: 31, d: 11, h: 79 }, brand: null,
+    description: 'Six shelves, holds a real load of textbooks without sagging. Two small chips near the base. I will empty it before you come.',
     tags: ['bookshelf', 'bookcase', 'storage', 'white'], pickup: 'two_people', weightClass: 'heavy', priceUsd: 0, estValueUsd: 55,
     photo: PHOTO.bookshelfWhite, neighborhood: 'Albany', address: '915 Solano Ave', mode: 'first_come', availableToday: true, minutesAgo: 33 * 60, nudge: [-0.001, 0.001],
   },
   {
-    id: 'l_blue', ownerId: 'u_lucia', title: 'Blue mid-century couch', category: 'seating', subcategory: 'Sofa',
-    color: 'Deep blue', material: 'Upholstery on wood legs', condition: 'like_new', dims: { w: 78, d: 33, h: 31 }, brand: null,
-    description: 'Barely a year old. We are moving abroad and cannot take it. Cushions are firm, fabric is clean.',
-    tags: ['sofa', 'couch', 'mid-century', 'blue'], pickup: 'two_people', weightClass: 'heavy', priceUsd: 40, estValueUsd: 380,
+    id: 'l_blue', ownerId: 'u_lucia', title: 'Navy three-seat couch', category: 'seating', subcategory: 'Sofa',
+    color: 'Navy blue', material: 'Woven upholstery', condition: 'good', dims: { w: 84, d: 37, h: 33 }, brand: null,
+    description: 'Deep enough to nap on and it has seen a lot of movie nights. We are moving abroad and cannot take it. Cushion covers just went through the wash. Pillows can come too.',
+    tags: ['sofa', 'couch', 'three seat', 'blue'], pickup: 'two_people', weightClass: 'heavy', priceUsd: 25, estValueUsd: 180,
     photo: PHOTO.sofaBlue, neighborhood: 'Elmwood', address: '2811 Piedmont Ave', mode: 'owner_picks', availableToday: false, minutesAgo: 41 * 60, nudge: [0.002, 0.001],
   },
   {
-    id: 'l_nightstand', ownerId: 'u_tom', title: 'Small wooden dresser', category: 'storage', subcategory: 'Nightstand',
-    color: 'Honey', material: 'Pine', condition: 'worn', dims: { w: 28, d: 16, h: 27 }, brand: null,
-    description: 'Three drawers. The finish is scratched on top, easy to cover with a runner or refinish over a weekend.',
-    tags: ['nightstand', 'dresser', 'bedroom', 'pine'], pickup: 'one_person', weightClass: 'medium', priceUsd: 0, estValueUsd: 30,
-    photo: PHOTO.dresserVase, neighborhood: 'Lorin', address: '3120 Ellis St', mode: 'first_come', availableToday: true, minutesAgo: 49 * 60, nudge: [0.001, 0.001],
+    id: 'l_nightstand', ownerId: 'u_tom', title: 'Two-tone low dresser', category: 'storage', subcategory: 'Dresser',
+    color: 'White and walnut', material: 'Wood veneer', condition: 'good', dims: { w: 60, d: 18, h: 30 }, brand: null,
+    description: 'Lots of drawers for a small bedroom. One sticks a little when it is humid. The top is scratched but a runner hides it. Lamp and basket not included.',
+    tags: ['dresser', 'bedroom', 'storage', 'two tone'], pickup: 'two_people', weightClass: 'heavy', priceUsd: 0, estValueUsd: 70,
+    photo: PHOTO.dresserSmall, neighborhood: 'Lorin', address: '3120 Ellis St', mode: 'first_come', availableToday: true, minutesAgo: 49 * 60, nudge: [0.001, 0.001],
   },
   {
-    id: 'l_white', ownerId: 'u_kenji', title: 'White armchair, black frame', category: 'seating', subcategory: 'Armchair',
-    color: 'White', material: 'Padded fabric, wood frame', condition: 'good', dims: { w: 27, d: 29, h: 30 }, brand: null,
+    id: 'l_white', ownerId: 'u_kenji', title: 'Blush pink armchair', category: 'seating', subcategory: 'Armchair',
+    color: 'Blush pink', material: 'Tufted fabric, black wood legs', condition: 'good', dims: { w: 27, d: 29, h: 30 }, brand: null,
     description: 'Clean lines and a comfortable sit. One faint mark on the left arm that I never got around to cleaning.',
-    tags: ['armchair', 'accent chair', 'modern'], pickup: 'one_person', weightClass: 'medium', priceUsd: 20, estValueUsd: 110,
-    photo: PHOTO.armchairWhite, neighborhood: 'North Berkeley', address: '1509 Walnut St', mode: 'first_come', availableToday: false, minutesAgo: 60 * 60, nudge: [-0.001, -0.002],
+    tags: ['armchair', 'accent chair', 'pink', 'modern'], pickup: 'one_person', weightClass: 'medium', priceUsd: 20, estValueUsd: 110,
+    photo: PHOTO.armchairPink, neighborhood: 'North Berkeley', address: '1509 Walnut St', mode: 'first_come', availableToday: false, minutesAgo: 60 * 60, nudge: [-0.001, -0.002],
   },
 ];
 
@@ -119,7 +119,7 @@ export function buildSeed(now: number) {
     const center = NEIGHBORHOODS[rest.neighborhood] ?? { lat: 37.8676, lng: -122.2595 };
     return {
       ...rest,
-      photos: [unsplash(photo)],
+      photos: [photo],
       approx: { lat: center.lat + nudge[0], lng: center.lng + nudge[1] },
       status: status ?? 'available',
       createdAt: now - minutesAgo * MIN,

@@ -1,5 +1,8 @@
+import { Image } from 'react-native';
+
 import { config } from '@/lib/config';
 
+import { isBundledPhoto, photoSource } from './seed/photos';
 import { supabase } from './supabase';
 import type { Claim, Listing, Message } from './types';
 
@@ -41,7 +44,9 @@ const point = (lat: number, lng: number) => `SRID=4326;POINT(${lng} ${lat})`;
 async function uploadPhoto(listingId: string, uri: string, position: number): Promise<string | null> {
   if (!supabase) return null;
   if (uri.startsWith('http')) return uri;
-  const bytes = await (await fetch(uri)).arrayBuffer();
+  // Bundled demo photos resolve to the packager or app-bundle URL, which fetch can read like any file.
+  const readable = isBundledPhoto(uri) ? (Image.resolveAssetSource(photoSource(uri))?.uri ?? uri) : uri;
+  const bytes = await (await fetch(readable)).arrayBuffer();
   const path = `${listingId}/${position}.jpg`;
   const { error } = await supabase.storage.from('listing-photos').upload(path, bytes, {
     contentType: 'image/jpeg',

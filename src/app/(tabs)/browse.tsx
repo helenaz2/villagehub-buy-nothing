@@ -1,6 +1,7 @@
-import { List, Map as MapIcon, PackageOpen } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { Clock, List, Map as MapIcon, PackageOpen } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, IconButton, Rule, Skeleton } from '@/components/bits';
@@ -8,6 +9,7 @@ import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
 import { ListingCard } from '@/components/ListingCard';
 import { ListingMap } from '@/components/ListingMap';
+import { Photo } from '@/components/Photo';
 import { Sheet } from '@/components/Sheet';
 import { T } from '@/components/T';
 import * as remote from '@/data/remote';
@@ -15,8 +17,8 @@ import { NEIGHBORHOOD_BASE_LBS } from '@/data/seed/listings';
 import { useStore } from '@/data/store';
 import type { Category, Listing } from '@/data/types';
 import { config, syncedBackend } from '@/lib/config';
-import { ago, categoryLabel, firstName, milesBetween } from '@/lib/format';
-import { fonts, radius, space, type, useTheme } from '@/theme';
+import { ago, away, categoryLabel, firstName, milesBetween, price } from '@/lib/format';
+import { fonts, palette, radius, space, type, useTheme } from '@/theme';
 
 type Filters = { cost: 'any' | 'free' | 'paid'; today: boolean; close: boolean; easy: boolean; category: Category | null };
 const NO_FILTERS: Filters = { cost: 'any', today: false, close: false, easy: false, category: null };
@@ -106,6 +108,16 @@ export default function Browse() {
   }, [listings, filters]);
 
   const rows = useMemo(() => layOut(entries), [entries]);
+  // Things you could carry home tonight, closest first. Hidden while filtering so the feed stays the answer.
+  const today = useMemo(
+    () =>
+      listings
+        .filter((l) => l.status === 'available' && l.availableToday)
+        .map((listing) => ({ listing, distance: milesBetween(config.region, listing.approx) }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 8),
+    [listings],
+  );
   const keptLbs = NEIGHBORHOOD_BASE_LBS + impact.filter((e) => e.at >= seededAt).reduce((n, e) => n + e.lbs, 0);
   const active = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS);
   const half = (width - space.gutter * 2 - space.sm) / 2;
@@ -154,6 +166,7 @@ export default function Browse() {
           />
         ))}
       </ScrollView>
+      {!active && view === 'list' && today.length > 2 ? <TodayRail entries={today} /> : null}
     </View>
   );
 
@@ -224,6 +237,48 @@ export default function Browse() {
   );
 }
 
+function TodayRail({ entries }: { entries: Entry[] }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ paddingTop: space.lg, gap: space.sm }}>
+      <View style={styles.railHead}>
+        <Clock size={16} color={colors.accentText} strokeWidth={2} />
+        <T variant="labelStrong">Ready for pickup today</T>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail} decelerationRate="fast" snapToInterval={RAIL_CARD + space.sm}>
+        {entries.map(({ listing, distance }) => {
+          const free = listing.priceUsd <= 0;
+          return (
+            <Pressable
+              key={listing.id}
+              onPress={() => router.push(`/listing/${listing.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`${listing.title}, ${price(listing.priceUsd)}, ${away(distance)}`}
+              style={({ pressed }) => ({ width: RAIL_CARD, opacity: pressed ? 0.85 : 1, gap: 4 })}>
+              <View>
+                <Photo uri={listing.photos[0]} rounded={radius.photo} style={{ width: RAIL_CARD, height: RAIL_CARD * 1.2 }} />
+                <View style={[styles.railPrice, { backgroundColor: free ? palette.terracotta : colors.bg }]}>
+                  <T variant="caption" style={{ color: free ? '#FFFFFF' : colors.text, fontFamily: fonts.sansBold }}>
+                    {price(listing.priceUsd)}
+                  </T>
+                </View>
+              </View>
+              <T variant="label" numberOfLines={1}>
+                {listing.title}
+              </T>
+              <T variant="caption" color="textSoft" numberOfLines={1}>
+                {away(distance)}
+              </T>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+const RAIL_CARD = 132;
+
 function WantedStrip({ onPost }: { onPost: () => void }) {
   const wanted = useStore((s) => s.wanted);
   const users = useStore((s) => s.users);
@@ -290,6 +345,9 @@ const styles = StyleSheet.create({
     paddingRight: space.sm,
   },
   filters: { paddingHorizontal: space.gutter, paddingTop: space.md, paddingBottom: space.xs, gap: space.xs },
+  railHead: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: space.gutter },
+  rail: { paddingHorizontal: space.gutter, gap: space.sm },
+  railPrice: { position: 'absolute', left: space.xs, top: space.xs, paddingHorizontal: 9, paddingVertical: 2, borderRadius: radius.pill },
   pair: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.gutter, alignItems: 'flex-start' },
   input: { borderWidth: 1.5, borderRadius: radius.control, padding: space.md, minHeight: 96, textAlignVertical: 'top' },
 });

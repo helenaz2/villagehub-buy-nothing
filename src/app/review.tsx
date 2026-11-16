@@ -1,8 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect, router } from 'expo-router';
-import { Plus, ShieldAlert, X } from 'lucide-react-native';
+import { Pencil, Plus, ShieldAlert, X } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { scanCamera } from '@/ai/scan';
 import { IconButton, Stepper } from '@/components/bits';
 import { Button, ICON_STROKE } from '@/components/Button';
 import { Chip } from '@/components/Chip';
@@ -127,12 +129,13 @@ export default function Review() {
         <View>
           <Photo uri={draft.photos[0]} style={{ width, height: width * 0.86 }} label={`Photo of ${item.name}`} priority="high" />
           <IconButton icon={X} label="Discard and go back" onPress={close} tone="onPhoto" style={{ position: 'absolute', top: insets.top + space.xs, left: space.md }} />
-          <View style={[styles.stamp, { backgroundColor: colors.bg }]}>
-            <T variant="caption" color="textSoft">
-              {draft.source === 'live' ? 'Read by Claude' : 'Sample result'} in {(draft.latencyMs / 1000).toFixed(1)}s
-              {draft.remaining.length > 0 ? `, ${draft.remaining.length} more from this photo` : ''}
-            </T>
-          </View>
+          {draft.remaining.length > 0 ? (
+            <View style={[styles.stamp, { backgroundColor: colors.bg }]}>
+              <T variant="caption" color="textSoft">
+                {draft.remaining.length} more from this photo after this one
+              </T>
+            </View>
+          ) : null}
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbs}>
@@ -172,6 +175,8 @@ export default function Review() {
               </T>
             )}
           </View>
+
+          {draft.upload ? <Identity /> : null}
 
           {flagged ? (
             <View style={[styles.notice, { borderColor: colors.accent }]}>
@@ -315,6 +320,88 @@ export default function Review() {
   );
 }
 
+/**
+ * What the model saw, and a one-tap way to correct it. Tapping a suggestion
+ * (or typing what it really is) re-scans the same photo with that as a hint,
+ * so size, weight, pickup and safety are redone for the right kind of item.
+ */
+function Identity() {
+  const { colors } = useTheme();
+  const draft = useStore((s) => s.draft);
+  const rescanDraft = useStore((s) => s.rescanDraft);
+  const [typing, setTyping] = useState(false);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (!draft?.upload) return null;
+
+  const upload = draft.upload;
+  const suggestions = (draft.original.alternatives ?? []).filter((a) => a.toLowerCase() !== draft.item.name.toLowerCase());
+
+  const rescan = async (hint: string) => {
+    const clean = hint.trim();
+    if (clean.length < 2 || busy) return;
+    haptic.tap();
+    setBusy(clean);
+    setError(null);
+    const scan = await scanCamera(upload, clean);
+    setBusy(null);
+    if (scan.kind === 'ok') {
+      haptic.detect();
+      rescanDraft(scan.outcome);
+      setTyping(false);
+      setText('');
+    } else {
+      haptic.warn();
+      setError(scan.kind === 'no_item' ? scan.hint : 'Could not reach the AI to re-check. Edit the fields by hand instead.');
+    }
+  };
+
+  return (
+    <View style={[styles.identity, { borderColor: colors.line }]}>
+      {draft.observation ? (
+        <T variant="caption" color="textSoft">
+          <T variant="caption" style={{ color: colors.text }}>
+            What I saw:{' '}
+          </T>
+          {draft.observation}
+        </T>
+      ) : null}
+      <T variant="labelStrong">{busy ? `Taking another look as a ${busy.toLowerCase()}` : `Not a ${draft.item.subcategory.toLowerCase()}?`}</T>
+      {busy ? (
+        <ActivityIndicator color={colors.text} style={{ alignSelf: 'flex-start' }} />
+      ) : typing ? (
+        <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center' }}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            autoFocus
+            placeholder="What is it? e.g. box fan"
+            placeholderTextColor={colors.textFaint}
+            returnKeyType="search"
+            onSubmitEditing={() => void rescan(text)}
+            accessibilityLabel="What the item really is"
+            style={[type.body, styles.line, { flex: 1, color: colors.text, borderBottomColor: colors.accent }]}
+          />
+          <Button compact label="Re-check" onPress={() => void rescan(text)} disabled={text.trim().length < 2} />
+        </View>
+      ) : (
+        <View style={styles.wrap}>
+          {suggestions.map((s) => (
+            <Chip key={s} label={s} onPress={() => void rescan(s)} />
+          ))}
+          <Chip label="Something else" icon={Pencil} onPress={() => setTyping(true)} />
+        </View>
+      )}
+      {error ? (
+        <T variant="caption" style={{ color: colors.accentText }}>
+          {error}
+        </T>
+      ) : null}
+    </View>
+  );
+}
+
 function Field({
   label,
   unsure,
@@ -393,6 +480,7 @@ const styles = StyleSheet.create({
   thumbs: { paddingHorizontal: space.gutter, paddingVertical: space.md, gap: space.xs },
   thumb: { width: 64, height: 64 },
   addThumb: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: radius.photo, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  identity: { gap: space.xs, borderWidth: 1.5, borderStyle: 'dashed', borderRadius: radius.control, padding: space.md },
   notice: { flexDirection: 'row', gap: space.sm, borderWidth: 1.5, borderRadius: radius.control, padding: space.md },
   verdict: { marginHorizontal: -space.gutter, paddingHorizontal: space.gutter, paddingVertical: space.lg, gap: space.xs },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: 2 },

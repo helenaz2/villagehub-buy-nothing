@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAiStatus } from '@/ai/scan';
 import { DEMO_NEIGHBOR, ME } from '@/data/seed/people';
 import { useStore } from '@/data/store';
 import { config, hasSupabase, liveAi } from '@/lib/config';
@@ -23,6 +24,7 @@ export function DebugOverlay() {
   const reset = useStore((s) => s.reset);
   const toggle = useStore((s) => s.toggleDebug);
   const users = useStore((s) => s.users);
+  const aiStatus = useAiStatus();
 
   if (!debug) return null;
   const me = users.find((u) => u.id === meId);
@@ -31,7 +33,7 @@ export function DebugOverlay() {
   return (
     <View style={[styles.panel, { top: insets.top + 48 }]} accessibilityLabel="Debug panel">
       <T variant="caption" style={light}>
-        AI {liveAi ? 'live (edge function)' : 'mock'}, data {config.backend}
+        AI {aiStatus === 'live' ? (liveAi ? 'live (edge function)' : `live (${config.scanServerUrl})`) : aiStatus === 'checking' ? 'checking' : 'samples only'}, data {config.backend}
         {hasSupabase ? '' : ', no backend keys'}
       </T>
       <T variant="caption" style={light}>

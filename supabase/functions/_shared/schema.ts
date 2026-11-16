@@ -39,6 +39,8 @@ export const scanItemSchema = z.object({
   /** Where the item sits in the photo, as fractions of width and height. */
   box: z.object({ x: unit, y: unit, w: unit, h: unit }),
   name: z.string().min(2).max(60),
+  /** Other things the item could plausibly be, when the model is unsure. The edit screen offers them as one-tap fixes. */
+  alternatives: z.array(z.string().min(2).max(40)).max(3).optional(),
   category: categorySchema,
   subcategory: z.string().min(2).max(40),
   color: z.string().min(2).max(30),

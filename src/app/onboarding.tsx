@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Photo } from '@/components/Photo';
 import { T } from '@/components/T';
-import { PHOTO, unsplash } from '@/data/seed/photos';
+import { PHOTO } from '@/data/seed/photos';
 import { useStore } from '@/data/store';
 import { radius, space, useTheme } from '@/theme';
 
@@ -63,7 +63,7 @@ export default function Onboarding() {
           <View key={p.title} style={{ width }}>
             {/* Each photo sits differently on the page so the three screens do not read as a template. */}
             <Photo
-              uri={unsplash(p.photo)}
+              uri={p.photo}
               rounded={i === 0 ? 0 : radius.photo}
               style={{
                 height: height * (i === 1 ? 0.44 : 0.5),

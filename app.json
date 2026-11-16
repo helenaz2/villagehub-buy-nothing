@@ -8,7 +8,7 @@
     "scheme": "villagehubbuynothing",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "supportsTablet": false,
       "bundleIdentifier": "app.curbside.demo",
       "infoPlist": {
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F4EFE6",
+        "backgroundColor": "#1E3B2F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -56,13 +56,14 @@
         {
           "backgroundColor": "#F4EFE6",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 120
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "description": "Snap a photo of furniture you no longer need. Curbside writes the listing, finds a neighbor, and handles the pickup."
   }
 }

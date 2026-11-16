@@ -1,20 +1,24 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useIsFocused } from 'expo-router';
 import { Accelerometer } from 'expo-sensors';
-import { Camera, Check, Images, Zap, ZapOff } from 'lucide-react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Check, ChevronRight, Images, Lightbulb, RotateCcw, Zap, ZapOff } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SAMPLES, type SampleKey } from '@/ai/mocks';
 import { compressForUpload, precheck } from '@/ai/precheck';
-import { scanPhoto, type ScanOutcome } from '@/ai/scan';
+import { probeScanServer, scanCamera, scanSample, useAiStatus, type ScanOutcome } from '@/ai/scan';
 import { Button, ICON_STROKE } from '@/components/Button';
 import { Photo } from '@/components/Photo';
 import { Sheet } from '@/components/Sheet';
 import { T } from '@/components/T';
+import { photoSource } from '@/data/seed/photos';
 import { useStore } from '@/data/store';
+import { CameraGate } from '@/features/CameraGate';
 import { Reticle, type Box, type ReticlePhase } from '@/features/Reticle';
 import { haptic } from '@/lib/haptics';
 import { palette, radius, space, touch } from '@/theme';
@@ -24,6 +28,8 @@ type Phase =
   | { name: 'scanning'; uri: string }
   | { name: 'found'; uri: string; outcome: ScanOutcome }
   | { name: 'pick'; uri: string; outcome: ScanOutcome; picked: number[] };
+
+const SCAN_STEPS = ['Taking a look', 'Working out what it is', 'Sizing it up', 'Still on it, nearly there'] as const;
 
 const clampBox = (b: Box): Box => {
   const x = Math.min(0.9, Math.max(0.04, b.x));
@@ -41,6 +47,10 @@ export default function Scanner() {
   const [hint, setHint] = useState<string | null>(null);
   const [auto, setAuto] = useState(false);
   const [samplesOpen, setSamplesOpen] = useState(false);
+  /** Set when a real photo could not be read because no AI is connected. */
+  const [noAi, setNoAi] = useState<string | null>(null);
+  const [aiInfoOpen, setAiInfoOpen] = useState(false);
+  const aiStatus = useAiStatus();
   const [frame, setFrame] = useState({ width: 1, height: 1 });
   const busy = useRef(false);
   const startDraft = useStore((s) => s.startDraft);
@@ -48,6 +58,18 @@ export default function Scanner() {
   const toggleDebug = useStore((s) => s.toggleDebug);
 
   const granted = permission?.granted === true;
+
+  // Progress copy while the model works, so a 5 second scan never looks stuck.
+  const [scanStep, setScanStep] = useState(0);
+  const scanning = phase.name === 'scanning';
+  useEffect(() => {
+    if (!scanning) return;
+    const timers = [1800, 4200, 8000].map((ms, i) => setTimeout(() => setScanStep(i + 1), ms));
+    return () => {
+      timers.forEach(clearTimeout);
+      setScanStep(0); // ready for the next scan
+    };
+  }, [scanning]);
 
   const finish = useCallback(
     (outcome: ScanOutcome, uri: string) => {
@@ -84,26 +106,36 @@ export default function Scanner() {
     setHint(null);
     haptic.press();
     try {
-      const shot = await camera.current.takePictureAsync({ quality: 0.8 });
+      const shot = await camera.current.takePictureAsync({ quality: 0.85 });
       if (!shot?.uri) throw new Error('No photo');
-      const check = await precheck(shot.uri);
+      // Freeze the frame right away, then check and shrink the photo in parallel.
+      setPhase({ name: 'scanning', uri: shot.uri });
+      const [check, upload] = await Promise.all([precheck(shot.uri), compressForUpload(shot.uri)]);
       if (!check.ok) {
         haptic.warn();
         setHint(check.hint);
+        setPhase({ name: 'idle' });
         busy.current = false;
         return;
       }
-      setPhase({ name: 'scanning', uri: shot.uri });
-      const upload = await compressForUpload(shot.uri);
-      const outcome = await scanPhoto({ base64: upload.base64 });
-      finish(outcome, upload.uri);
+      const scan = await scanCamera(upload.base64);
+      if (scan.kind === 'ok') {
+        finish(scan.outcome, upload.uri);
+        return;
+      }
+      logScan({ at: Date.now(), source: scan.kind === 'no_item' ? 'live' : 'mock', latencyMs: scan.latencyMs, fallbackReason: scan.kind === 'no_ai' ? scan.reason : null, items: 0 });
+      haptic.warn();
+      setPhase({ name: 'idle' });
+      busy.current = false;
+      if (scan.kind === 'no_item') setHint(scan.hint);
+      else setNoAi(scan.reason);
     } catch {
       haptic.warn();
       setHint('The camera did not catch that. Try once more.');
       setPhase({ name: 'idle' });
       busy.current = false;
     }
-  }, [cameraReady, finish]);
+  }, [cameraReady, finish, logScan]);
 
   const runSample = useCallback(
     async (key: SampleKey) => {
@@ -112,9 +144,10 @@ export default function Scanner() {
       if (!sample) return;
       busy.current = true;
       setSamplesOpen(false);
+      setNoAi(null);
       setHint(null);
       setPhase({ name: 'scanning', uri: sample.photo });
-      const outcome = await scanPhoto({ base64: null, sample: key });
+      const outcome = await scanSample(key);
       finish(outcome, sample.photo);
     },
     [finish],
@@ -148,6 +181,7 @@ export default function Scanner() {
     setFrame({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height });
 
   const frozen = phase.name === 'idle' ? null : phase.uri;
+  const gated = !granted && !frozen;
   const found = phase.name === 'found' ? phase.outcome.result.items[0] : null;
   const reticlePhase: ReticlePhase = phase.name === 'scanning' ? 'scanning' : phase.name === 'found' ? 'found' : 'idle';
 
@@ -170,25 +204,30 @@ export default function Scanner() {
         />
       ) : null}
 
-      {frozen ? <Image source={{ uri: frozen }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+      {frozen ? <Image source={photoSource(frozen)} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
 
-      {!granted && !frozen ? (
-        <View style={[styles.gate, { paddingTop: insets.top + space.section }]}>
-          <Camera size={40} color={palette.sageBright} strokeWidth={1.25} />
-          <T variant="title" style={{ color: palette.cream }}>
-            The camera does the typing.
-          </T>
-          <T style={{ color: palette.creamSoft, maxWidth: 320 }}>
-            Point it at a chair, a lamp or a whole sofa. Curbside fills in the listing and you publish it.
-          </T>
-          {permission && !permission.canAskAgain ? (
-            <T variant="label" style={{ color: palette.creamSoft }}>
-              Camera access is off. Turn it on for Curbside in your phone settings, or try a sample item.
-            </T>
-          ) : (
-            <Button label="Turn on the camera" onPress={() => void requestPermission()} style={{ alignSelf: 'flex-start', backgroundColor: palette.sageBright }} />
-          )}
-        </View>
+      {/* Soft shade at the top and bottom keeps the wordmark, reticle and controls readable on a bright wall. */}
+      {gated ? null : (
+        <>
+          <LinearGradient
+            colors={['rgba(21,19,16,0.55)', 'rgba(21,19,16,0)']}
+            style={[styles.shade, { top: 0, height: insets.top + 170 }]}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={['rgba(21,19,16,0)', 'rgba(21,19,16,0.5)']}
+            style={[styles.shade, { bottom: 0, height: 260 }]}
+            pointerEvents="none"
+          />
+        </>
+      )}
+
+      {gated ? (
+        <CameraGate
+          permission={permission}
+          onAllow={() => void requestPermission()}
+          onSamples={() => setSamplesOpen(true)}
+        />
       ) : null}
 
       {phase.name !== 'pick' && (granted || frozen) ? (
@@ -233,37 +272,77 @@ export default function Scanner() {
         </View>
       ) : null}
 
+      {gated ? null : (
       <View style={[styles.top, { paddingTop: insets.top + space.xs }]} pointerEvents="box-none">
-        <Pressable onLongPress={toggleDebug} delayLongPress={600} accessibilityLabel="Curbside" hitSlop={10}>
-          <T variant="heading" style={[styles.onPhoto, { color: palette.paper }]}>
-            Curbside
-          </T>
-        </Pressable>
+        <View style={styles.topRow} pointerEvents="box-none">
+          <Pressable onLongPress={toggleDebug} delayLongPress={600} accessibilityLabel="Curbside" hitSlop={10}>
+            <T variant="heading" style={[styles.onPhoto, { color: palette.paper }]}>
+              Curbside
+            </T>
+          </Pressable>
+          {aiStatus === 'offline' ? (
+            <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(200)}>
+              <Pressable
+                onPress={() => {
+                  haptic.tap();
+                  void probeScanServer(true);
+                  setAiInfoOpen(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Demo mode. Learn more"
+                hitSlop={8}
+                style={styles.aiPill}>
+                <View style={[styles.aiDot, { backgroundColor: palette.clay }]} />
+                <T variant="caption" style={{ color: palette.paper }}>
+                  Demo mode
+                </T>
+              </Pressable>
+            </Animated.View>
+          ) : null}
+        </View>
         <T variant="label" style={[styles.onPhoto, { color: palette.paper }]}>
           {phase.name === 'scanning'
-            ? 'Taking a look'
+            ? SCAN_STEPS[scanStep]
             : phase.name === 'found'
               ? 'Got it'
               : phase.name === 'pick'
                 ? 'Tap the ones you want to list'
-                : granted
-                  ? 'Fit the whole item in the frame'
-                  : ''}
+                : 'Fit the whole item in the frame'}
         </T>
       </View>
+      )}
 
       {hint ? (
-        <View style={[styles.hint, { top: insets.top + 86 }]} accessibilityLiveRegion="polite">
-          <T variant="label" style={{ color: palette.forest }}>
-            {hint}
-          </T>
-        </View>
+        <Animated.View
+          key={hint}
+          entering={FadeInDown.duration(260)}
+          exiting={FadeOut.duration(180)}
+          style={[styles.hint, { top: insets.top + 86 }]}
+          accessibilityLiveRegion="polite">
+          <Pressable onPress={() => setHint(null)} accessibilityRole="button" accessibilityHint="Dismisses the tip" style={styles.hintRow}>
+            <Lightbulb size={18} color={palette.terracotta} strokeWidth={ICON_STROKE} />
+            <T variant="label" style={{ color: palette.forest, flex: 1 }}>
+              {hint}
+            </T>
+          </Pressable>
+        </Animated.View>
       ) : null}
 
+      {gated || phase.name !== 'idle' || hint ? null : <NearbyPeek />}
+
+      {gated ? null : (
       <View style={[styles.controls, { paddingBottom: space.lg }]} pointerEvents="box-none">
         {phase.name === 'pick' ? (
           <View style={{ flex: 1, flexDirection: 'row', gap: space.sm, paddingHorizontal: space.gutter }}>
-            <Button kind="secondary" label="Retake" onPress={() => setPhase({ name: 'idle' })} style={{ borderColor: palette.paper, backgroundColor: 'rgba(0,0,0,0.35)' }} />
+            <Button
+              kind="ghostOnDark"
+              icon={RotateCcw}
+              label="Retake"
+              onPress={() => {
+                setPhase({ name: 'idle' });
+                busy.current = false;
+              }}
+            />
             <Button
               kind="accent"
               label={phase.picked.length === 1 ? 'List 1 item' : `List ${phase.picked.length} items`}
@@ -279,7 +358,9 @@ export default function Scanner() {
               accessibilityRole="button"
               accessibilityLabel="Try a sample item"
               style={styles.side}>
-              <Images size={24} color={palette.paper} strokeWidth={ICON_STROKE} />
+              <View style={styles.sideIcon}>
+                <Images size={22} color={palette.paper} strokeWidth={ICON_STROKE} />
+              </View>
               <T variant="caption" style={[styles.onPhoto, { color: palette.paper }]}>
                 Samples
               </T>
@@ -303,11 +384,13 @@ export default function Scanner() {
               accessibilityState={{ checked: auto }}
               accessibilityLabel="Scan automatically when the phone is steady"
               style={styles.side}>
-              {auto ? (
-                <Zap size={24} color={palette.clay} fill={palette.clay} strokeWidth={ICON_STROKE} />
-              ) : (
-                <ZapOff size={24} color={palette.paper} strokeWidth={ICON_STROKE} />
-              )}
+              <View style={[styles.sideIcon, auto && { borderColor: palette.clay, backgroundColor: 'rgba(226, 132, 102, 0.18)' }]}>
+                {auto ? (
+                  <Zap size={22} color={palette.clay} fill={palette.clay} strokeWidth={ICON_STROKE} />
+                ) : (
+                  <ZapOff size={22} color={palette.paper} strokeWidth={ICON_STROKE} />
+                )}
+              </View>
               <T variant="caption" style={[styles.onPhoto, { color: auto ? palette.clay : palette.paper }]}>
                 {auto ? 'Auto on' : 'Auto off'}
               </T>
@@ -315,6 +398,59 @@ export default function Scanner() {
           </>
         )}
       </View>
+      )}
+
+      <Sheet visible={noAi != null} onClose={() => setNoAi(null)} title="I could not read that photo">
+        <T color="textSoft">
+          Curbside could not reach its scanner just now, so it did not guess. It only fills in a listing when it can
+          actually see your item. Check your connection and try again, or run the demo with a sample.
+        </T>
+        <T variant="labelStrong" style={{ marginTop: space.xs }}>
+          Or run the demo with a sample
+        </T>
+        <View style={styles.sampleGrid}>
+          {SAMPLES.map((s) => (
+            <Pressable
+              key={s.key}
+              onPress={() => void runSample(s.key)}
+              accessibilityRole="button"
+              accessibilityLabel={`Scan the sample ${s.label}`}
+              style={({ pressed }) => [styles.sample, { opacity: pressed ? 0.8 : 1 }]}>
+              <Photo uri={s.photo} rounded={radius.photo} style={{ width: '100%', aspectRatio: 1 }} />
+              <T variant="label">{s.label}</T>
+            </Pressable>
+          ))}
+        </View>
+      </Sheet>
+
+      <Sheet visible={aiInfoOpen} onClose={() => setAiInfoOpen(false)} title={aiStatus === 'live' ? 'Back online' : 'Demo mode'}>
+        <T color="textSoft">
+          {aiStatus === 'live'
+            ? 'The scanner is connected again. Point the camera at anything you are passing on.'
+            : 'The scanner is offline, so real photos cannot be read right now. The sample items still run the whole flow, from scan to handoff.'}
+        </T>
+        <View style={{ flexDirection: 'row', gap: space.sm, paddingBottom: space.md }}>
+          {aiStatus !== 'live' ? (
+            <Button
+              kind="secondary"
+              compact
+              icon={RotateCcw}
+              label="Try again"
+              onPress={() => void probeScanServer(true)}
+              style={{ flex: 1 }}
+            />
+          ) : null}
+          <Button
+            compact
+            label={aiStatus === 'live' ? 'Done' : 'Try a sample'}
+            onPress={() => {
+              setAiInfoOpen(false);
+              if (aiStatus !== 'live') setSamplesOpen(true);
+            }}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </Sheet>
 
       <Sheet visible={samplesOpen} onClose={() => setSamplesOpen(false)} title="Try a sample item">
         <T color="textSoft">No furniture handy? Pick one and watch the whole flow.</T>
@@ -336,9 +472,76 @@ export default function Scanner() {
   );
 }
 
+/**
+ * A small window onto the feed from the camera: real photos of what neighbors
+ * just posted, one tap from the Nearby tab. It gives the home screen some life
+ * before the first scan without covering the viewfinder.
+ */
+function NearbyPeek() {
+  const listings = useStore((s) => s.listings);
+  const meId = useStore((s) => s.meId);
+  const { recent, free } = useMemo(() => {
+    const open = listings.filter((l) => l.status === 'available' && l.ownerId !== meId);
+    return {
+      recent: [...open].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3),
+      free: open.filter((l) => l.priceUsd <= 0).length,
+    };
+  }, [listings, meId]);
+  if (recent.length === 0) return null;
+  return (
+    <Animated.View entering={FadeInDown.delay(200).duration(320)} exiting={FadeOut.duration(150)} style={[styles.peekWrap, { bottom: 82 + space.lg + space.md }]} pointerEvents="box-none">
+      <Pressable
+        onPress={() => {
+          haptic.tap();
+          router.navigate('/browse');
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={`${free} free things near you. Open Nearby`}
+        style={({ pressed }) => [styles.peek, { opacity: pressed ? 0.85 : 1 }]}>
+        <View style={styles.peekThumbs}>
+          {recent.map((l, i) => (
+            <Image
+              key={l.id}
+              source={photoSource(l.photos[0] ?? '')}
+              style={[styles.peekThumb, { marginLeft: i === 0 ? 0 : -12, zIndex: 3 - i }]}
+              contentFit="cover"
+            />
+          ))}
+        </View>
+        <T variant="label" style={{ color: palette.paper }}>
+          {free === 1 ? '1 free thing' : `${free} free things`} near you
+        </T>
+        <ChevronRight size={16} color={palette.paper} strokeWidth={ICON_STROKE} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.nightSunk },
-  gate: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingHorizontal: space.gutter, gap: space.md },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  aiPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    minHeight: 32,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(21, 19, 16, 0.5)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(244, 239, 230, 0.35)',
+  },
+  aiDot: { width: 8, height: 8, borderRadius: 4 },
+  sideIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(21, 19, 16, 0.45)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(244, 239, 230, 0.35)',
+  },
   top: {
     position: 'absolute',
     top: 0,
@@ -347,6 +550,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.gutter,
     gap: 2,
   },
+  shade: { position: 'absolute', left: 0, right: 0 },
   onPhoto: { textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } },
   hint: {
     position: 'absolute',
@@ -355,7 +559,28 @@ const styles = StyleSheet.create({
     backgroundColor: palette.paper,
     borderRadius: radius.control,
     padding: space.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  peekWrap: { position: 'absolute', left: space.gutter, right: space.gutter, alignItems: 'center' },
+  peek: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingLeft: 6,
+    paddingRight: 12,
+    minHeight: 48,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(21, 19, 16, 0.55)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(244, 239, 230, 0.35)',
+  },
+  peekThumbs: { flexDirection: 'row' },
+  peekThumb: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: palette.nightSunk },
   controls: {
     position: 'absolute',
     bottom: 0,
